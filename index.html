@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>モンスト反射シミュレーター</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Comic+Reggae&display=swap');
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;-webkit-text-size-adjust:100%;background:#111;color:#fff;font-family:"Comic Reggae","ComicReggae",-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;height:100%;overflow:hidden;touch-action:manipulation}
+body{display:block;position:relative}
+button{border:1px solid #3d4658;background:#242b38;color:#fff;border-radius:13px;height:56px;padding:0 14px;font-size:17px;font-weight:700;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+button:active{transform:scale(.97)}
+button.repeatPressed{background:#4a566b;border-color:#7f8da8;box-shadow:0 0 0 2px rgba(255,255,255,.12) inset}
+html,body,*{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#bar{position:absolute;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;left:50%;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(96vw,620px);max-width:calc(100vw - 8px);display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:#151820;z-index:20;background:rgba(21,24,32,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);border-radius:14px}
+#fileBtn{flex:1 1 190px;min-width:150px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#count{display:grid;grid-template-columns:56px 1fr 56px;gap:2px;flex:0 0 174px;align-items:center}
+#count span{text-align:center;font-size:18px;font-weight:700;line-height:18px;display:flex;flex-direction:column;align-items:center;justify-content:center}#count span .maxLabel{font-size:9px;line-height:9px;height:9px;font-weight:700}#count span small{font-size:9px;font-weight:500;line-height:10px;opacity:.8}#count span.max .num{color:#ff3b3b}#angleControls{display:flex;align-items:center;gap:3px;flex:0 0 auto}#angleDisplay{font-size:17px;opacity:.95;white-space:nowrap;min-width:76px;text-align:center}#angleControls button{width:56px;min-width:56px;height:58px;padding:0;font-size:30px}
+#minus,#plus{width:56px;min-width:56px;height:58px;padding:0;font-size:30px;touch-action:manipulation}
+#zoomBtn{flex:0 0 100px;min-width:0;width:100%;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:17px}
+#gaugeBtn{flex:0 0 58px;min-width:58px;width:58px;padding:0;font-size:20px}
+#settingsBtn{flex:0 0 58px;height:44px;font-size:24px;padding:0}
+#settingsPanel{display:none;flex:0 0 100%;width:100%;min-width:0;align-items:flex-start;justify-content:flex-start;gap:0;flex-wrap:wrap;padding:8px;border-top:1px solid #394151;position:relative}
+#settingsPanel.open{display:flex}
+#settingsPanel .settingsChoices{width:100%;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:8px}
+#settingsPanel #settingsBack{align-self:flex-start;width:48px;min-width:48px;height:42px;padding:0;font-size:24px}
+#settingsPanel .settingsChoiceButtons{width:calc(100% - 48px);margin-left:48px;display:flex;flex-direction:column;gap:8px}
+#settingsPanel button{height:58px;min-width:0;width:100%;font-size:17px;padding:0 24px;white-space:nowrap;overflow:visible;text-overflow:clip}
+#settingsSubBack{display:none;position:absolute;left:2px;top:4px;width:44px;min-width:44px;height:42px;padding:0;font-size:24px;z-index:30}
+body.settings-sub-mode #settingsSubBack{display:block}
+#adjust,#cursorAdjust,#menuAdjust{display:none;flex:0 0 100%;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:6px 58px 3px 58px;border-top:1px solid #394151}
+#adjust .row,#cursorAdjust .row,#menuAdjust .row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
+#adjust .wallControlRow{display:grid;grid-template-columns:52px 44px minmax(70px,1fr) 44px;align-items:center;gap:5px;width:100%;max-width:390px}
+#adjust .wallControlRow b{font-size:14px;text-align:left;padding-left:0;white-space:nowrap}
+#adjust .wallControlRow button{width:100%;min-width:0}
+#adjust .wallValue{width:100%;min-width:0;height:38px;border:1px solid #3d4658;border-radius:9px;background:#151a23;color:#fff;text-align:center;font-size:15px;font-weight:700;padding:0 4px;-webkit-user-select:text;user-select:text}
+#adjust button,#cursorAdjust button,#menuAdjust button{height:38px;min-width:62px;padding:0 8px;font-size:16px;border-radius:9px}
+#adjust .note{width:100%;text-align:center;font-size:11px;line-height:1.35;color:#ddd;padding:0 8px}
+#wallReset,#cursorReset,#menuReset{color:#ff3b3b!important;border-color:#8a3030;background:#301c22}
+#cursorSmaller,#cursorLarger{min-width:62px}
+body.settings-mode #fileBtn,body.settings-mode #count,body.settings-mode #zoomBtn,body.settings-mode #gaugeBtn,body.settings-mode #angleControls{display:none!important}
+body.settings-mode #settingsBtn{display:none!important}
+body.settings-mode #settingsPanel{display:flex}
+body.settings-sub-mode #settingsPanel{display:none}
+body.settings-sub-mode #settingsBack{display:none}
+#wrap{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;overflow:hidden;background:#111}
+#stage{position:relative;width:100%;height:100%;max-width:100%;max-height:100%;touch-action:none;transform-origin:center center}
+#photo{display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#angleGuide{display:none!important}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:16px;text-align:center;padding:30px;cursor:pointer}
+#file{display:none}
+@media(max-width:600px){
+ #bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,174px) 100px;gap:7px;padding:8px}
+ #fileBtn{grid-column:auto;min-width:0;width:100%;font-size:14px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #count{width:100%;min-width:0;grid-column:auto}
+ #zoomBtn{width:100%;min-width:0;padding:0 3px;font-size:17px;grid-column:3;grid-row:1}
+ #gaugeBtn{width:100%;min-width:0;padding:0;font-size:20px;grid-column:3;grid-row:2}
+ #angleControls{justify-content:center;grid-column:2;grid-row:2}
+ #angleDisplay{font-size:11px;opacity:.95;white-space:normal;min-width:56px;width:56px;text-align:center;line-height:1.05;display:flex;flex-direction:column;align-items:center;justify-content:center}#angleDisplay .angleValue{font-size:12px;line-height:14px;font-weight:700}
+ #settingsBtn{grid-column:1;grid-row:2;width:58px;}
+ #adjust,#cursorAdjust,#menuAdjust{grid-column:1/-1;max-height:34vh;overflow:auto;padding-left:52px;padding-right:52px}
+}
+@media(max-width:430px){
+ #bar{grid-template-columns:minmax(0,1fr) 146px 82px;gap:5px;padding:6px}
+ button{height:54px}
+ #count{grid-template-columns:47px 1fr 47px;flex-basis:146px}
+ #minus,#plus{width:47px;min-width:47px;height:54px;font-size:27px}#angleControls button{width:47px;min-width:47px;height:54px;font-size:27px}
+ #zoomBtn{font-size:17px;padding:0 2px}
+ #gaugeBtn{width:100%;min-width:0;font-size:20px;padding:0;grid-column:3;grid-row:2}
+ #angleControls button{width:47px;min-width:47px;height:54px;font-size:27px}
+ #angleDisplay{font-size:10px;min-width:46px;width:46px;height:54px}
+}
+html::before,html::after,body::before,body::after{content:none!important;display:none!important}
+img,canvas,button,div,span{ -webkit-user-drag:none; }
+input{ -webkit-touch-callout:none; }
+ #bar.dragging{opacity:.92}
+#bar{transform-origin:center center}
+#zoomBtn.active{background:#52677e}
+#gaugeBtn.active{background:#52677e}
+
+/* 画面中央に重ねるゲージ */
+#gaugeOverlay{position:absolute;left:50%;top:50%;width:114px;height:32px;transform:translate(-50%,-50%) rotate(0deg);transform-origin:left center;pointer-events:none;z-index:15;display:none}
+#gaugeOverlay.on{display:block}
+#gaugeLine{position:absolute;left:0;top:50%;width:114px;height:20px;transform:translateY(-50%) scaleX(0);transform-origin:left center;border-radius:999px;background:rgba(255,255,255,.34);box-shadow:0 0 7px rgba(255,255,255,.12);}
+#gaugeCore{position:absolute;left:0;top:50%;width:114px;height:2px;transform:translateY(-50%) scaleX(0);transform-origin:left center;background:rgba(255,255,255,.75);}
+#gaugeCapStart,#gaugeCapEnd{position:absolute;top:50%;width:2px;height:30px;background:rgba(255,255,255,.78);transform:translateY(-50%) scaleY(0);transform-origin:center center}
+#gaugeCapStart{left:0}.gaugeCapEnd{right:0}
+#gaugeOverlay.animate #gaugeLine{animation:gaugePull .3s ease-out forwards}
+#gaugeOverlay.animate #gaugeCore{animation:gaugePull .3s ease-out forwards}
+#gaugeOverlay.animate #gaugeCapStart,#gaugeOverlay.animate #gaugeCapEnd{animation:gaugeCap .3s ease-out forwards}
+@keyframes gaugePull{from{transform:translateY(-50%) scaleX(0)}to{transform:translateY(-50%) scaleX(1)}}
+@keyframes gaugeCap{from{transform:translateY(-50%) scaleY(0)}to{transform:translateY(-50%) scaleY(1)}}
+</style>
+</head>
+<body>
+<div id="bar">
+  <button id="fileBtn" type="button">画像を選択</button>
+  <input id="file" type="file" accept="image/*">
+  <div id="count">
+    <button id="minus">−</button><span id="n"><b class="maxLabel"></b><strong class="num">3</strong><small>反射</small></span><button id="plus">＋</button>
+  </div>
+  <button id="zoomBtn">拡大</button>
+  <button id="gaugeBtn" type="button" aria-label="ガイド画像を保存">📸</button>
+  <button id="settingsBtn" aria-label="設定">⚙️</button>
+  <div id="settingsPanel">
+    <div class="settingsChoices">
+      <button id="settingsBack" type="button" aria-label="戻る">◁</button>
+      <div class="settingsChoiceButtons">
+        <button id="wallTab">壁判定を調整</button>
+        <button id="cursorTab">カーソルを調整</button>
+        <button id="menuTab">メニューサイズを調整</button>
+      </div>
+    </div>
+  </div>
+  <button id="settingsSubBack" type="button" aria-label="サイズ変更メニューに戻る">◁</button>
+  <div id="angleControls"><button id="angleMinus">−</button><span id="angleDisplay"><span>角度</span><span class="angleValue">270.00°</span></span><button id="anglePlus">＋</button></div>
+  <div id="adjust">
+    <div class="wallControlRow"><b>上 Y</b><button id="wallTopMinus">−</button><input id="wallTopValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="296" aria-label="上Y座標"><button id="wallTopPlus">＋</button></div>
+    <div class="wallControlRow"><b>下 Y</b><button id="wallBottomMinus">−</button><input id="wallBottomValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="1030" aria-label="下Y座標"><button id="wallBottomPlus">＋</button></div>
+    <div class="wallControlRow"><b>左 X</b><button id="wallLeftMinus">−</button><input id="wallLeftValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="54" aria-label="左X座標"><button id="wallLeftPlus">＋</button></div>
+    <div class="wallControlRow"><b>右 X</b><button id="wallRightMinus">−</button><input id="wallRightValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="1111" aria-label="右X座標"><button id="wallRightPlus">＋</button></div>
+    <div class="row wallActionRow"><button id="wallReset">リセット</button><button id="wallSave">保存</button><button id="wallRestore">保存を復元</button></div>
+    <div class="note">端末差によって壁判定に誤差がある時に使用して下さい。<br>このサイトの規準はiPhone14です。<br>保存ボタンを押すことで現在の壁判定を記録し、復元ボタンでいつでも戻すことが出来ます。サイトの履歴が残っている限り次回訪れた際にも有効なので便利です。</div>
+  </div>
+  <div id="cursorAdjust">
+    <div class="row"><b>カーソルサイズ</b><button id="cursorSmaller">小さく</button><button id="cursorLarger">大きく</button></div>
+    <div class="row"><button id="cursorReset">リセット</button></div>
+  </div>
+  <div id="menuAdjust">
+    <div class="row"><b>メニューサイズ</b><button id="menuSmaller">小さく</button><button id="menuLarger">大きく</button></div>
+    <div class="row"><button id="menuReset">リセット</button></div>
+  </div>
+</div>
+<div id="wrap">
+  <div id="gaugeOverlay" aria-hidden="true"><div id="gaugeLine"></div><div id="gaugeCore"></div><div id="gaugeCapStart"></div><div id="gaugeCapEnd" class="gaugeCapEnd"></div></div>
+  <div id="empty">画像を選択</div>
+  <div id="stage" hidden>
+    <img id="photo" alt="">
+    <canvas id="cv"></canvas>
+    <canvas id="angleGuide" aria-hidden="true"></canvas>
+  </div>
+</div>
+<script>
+const file=document.getElementById('file'), fileBtn=document.getElementById('fileBtn');
+const stage=document.getElementById('stage'), photo=document.getElementById('photo'), cv=document.getElementById('cv');
+const ctx=cv.getContext('2d'), empty=document.getElementById('empty');
+const angleGuide=document.getElementById('angleGuide');
+const angleGuideCtx=angleGuide.getContext('2d');
+let angleGuideFrame=0;
+const nEl=document.getElementById('n'), plus=document.getElementById('plus'), minus=document.getElementById('minus'), hide=document.getElementById('hide');
+
+let reflections=3, imgW=0,imgH=0; let zoomMode=false, zoomScale=1, zoomStartDist=0, zoomStartScale=1;
+let cursor={x:0,y:0}; // image coordinates
+let cursorSize=1;
+// pullAngle is the direction from the ball toward the tapped/released position.
+let pullAngle=-Math.PI/2;
+let active=null, lastX=0,lastY=0;
+let adjustMode=false;
+let savedBarPosition=null;
+let touchStartX=0,touchStartY=0;
+let topY=296, bottomY=1030;
+let leftX=54, rightX=1111;
+
+fileBtn.onclick=()=>file.click();
+empty.onclick=()=>{ if(stage.hidden) file.click(); };
+file.onchange=e=>{
+ const f=e.target.files?.[0]; if(!f)return;
+ const url=URL.createObjectURL(f);
+ // Remember the most recently selected image for the ⚡︎ button.
+ photo.onload=()=>{
+   imgW=photo.naturalWidth; imgH=photo.naturalHeight;
+   stage.hidden=false; empty.hidden=true;
+   fitStage();
+   // Cursor starts at center of the actual game field, not at a random old touch point.
+   const b=bounds();
+   cursor.x=(b.l+b.r)/2; cursor.y=(b.t+b.b)/2;
+   pullAngle=-Math.PI/2; updateAdjustUI(); updateAngleUI();
+   draw();
+   if(gaugeOn)positionGauge();
+ };
+ photo.src=url;
+};
+
+function fitStage(){
+ const wrapW=document.getElementById('wrap').clientWidth;
+ const wrapH=document.getElementById('wrap').clientHeight;
+ const scale=Math.min(wrapW/imgW,wrapH/imgH);
+ stage.style.width=Math.round(imgW*scale)+'px';
+ stage.style.height=Math.round(imgH*scale)+'px';
+ cv.width=imgW; cv.height=imgH;
+}
+window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(gaugeOn)positionGauge();draw();}});
+
+// Wall coordinates are independent X/Y values based on the iPhone 14 reference.
+// They are adjusted individually; changing one side does not preserve a ratio.
+function bounds(){
+ // 壁の基準座標はiPhone 14用の元の座標系を維持します。
+ // Xはそのまま、Yだけ元の1536基準から画像の高さへ変換します。
+ const refH=1536;
+ return {
+   l:Math.max(0,Math.min(imgW,leftX)),
+   r:Math.max(0,Math.min(imgW,rightX)),
+   t:Math.max(0,Math.min(imgH,(topY/refH)*imgH)),
+   b:Math.max(0,Math.min(imgH,(bottomY/refH)*imgH))
+ };
+}
+
+function draw(){
+ if(!imgW)return;
+ ctx.clearRect(0,0,imgW,imgH);
+ const b=bounds();
+ drawReflection(b);
+ drawCursor();
+ if(adjustMode) drawCalibration(b);
+}
+
+function updateAdjustUI(){}
+function drawCalibration(b){
+ ctx.save();
+ ctx.setLineDash([12,8]);
+ ctx.lineWidth=4;
+ ctx.strokeStyle='rgba(0,220,255,.95)';
+ ctx.beginPath();ctx.moveTo(b.l,b.t);ctx.lineTo(b.r,b.t);ctx.stroke();
+ ctx.strokeStyle='rgba(255,100,80,.95)';
+ ctx.beginPath();ctx.moveTo(b.l,b.b);ctx.lineTo(b.r,b.b);ctx.stroke();
+ ctx.strokeStyle='rgba(120,255,180,.95)';
+ ctx.beginPath();ctx.moveTo(b.l,b.t);ctx.lineTo(b.l,b.b);ctx.stroke();
+ ctx.strokeStyle='rgba(180,140,255,.95)';
+ ctx.beginPath();ctx.moveTo(b.r,b.t);ctx.lineTo(b.r,b.b);ctx.stroke();
+ ctx.setLineDash([]);
+ ctx.font='bold 12px -apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif';
+ ctx.fillStyle='#00eaff';ctx.fillText('Y='+Math.round(topY),b.l+5,Math.max(14,b.t-6));
+ ctx.fillStyle='#ff806a';ctx.fillText('Y='+Math.round(bottomY),b.l+5,Math.min(imgH-4,b.b+14));
+ ctx.fillStyle='#78ffb4';ctx.fillText('X='+Math.round(leftX),b.l+5,Math.max(b.t+14,(b.t+b.b)/2));
+ ctx.fillStyle='#b48cff';ctx.fillText('X='+Math.round(rightX),Math.max(b.l+5,b.r-42),Math.max(b.t+14,(b.t+b.b)/2));
+ ctx.restore();
+ updateAdjustUI();
+}
+
+function drawCursor(){
+ const x=cursor.x,y=cursor.y;
+ // Reference-app style cursor: a large orange circular target around the ball center.
+ const R=Math.max(68,Math.min(imgW,imgH)*0.065)*cursorSize;
+ const rg=ctx.createRadialGradient(x,y,R*.15,x,y,R*1.75);
+ rg.addColorStop(0,'rgba(255,150,35,.48)');
+ rg.addColorStop(.45,'rgba(255,115,20,.28)');
+ rg.addColorStop(1,'rgba(255,90,10,0)');
+ ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,R*1.75,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(255,105,15,.13)';ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='rgba(255,95,15,.95)';ctx.lineWidth=7;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.stroke();
+ ctx.strokeStyle='rgba(255,225,145,.82)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,R+6,0,Math.PI*2);ctx.stroke();
+ // Four thick white arms. They are the only move handles.
+ const L=145*cursorSize, gap=R+7*cursorSize;
+ for(let i=0;i<4;i++){
+   const a=pullAngle + Math.PI/4 + i*Math.PI/2;
+   const x1=x+Math.cos(a)*gap,y1=y+Math.sin(a)*gap;
+   const x2=x+Math.cos(a)*(gap+L),y2=y+Math.sin(a)*(gap+L);
+   ctx.strokeStyle='rgba(0,0,0,.16)';ctx.lineWidth=42*cursorSize;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+   ctx.strokeStyle='rgba(255,255,255,.58)';ctx.lineWidth=30*cursorSize;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+   ctx.fillStyle='rgba(255,255,255,.58)';ctx.beginPath();ctx.arc(x2,y2,17*cursorSize,0,Math.PI*2);ctx.fill();
+ }
+}
+
+function rayToSegment(px,py,dx,dy,x1,y1,x2,y2){
+ const sx=x2-x1,sy=y2-y1;
+ const den=dx*sy-dy*sx;
+ if(Math.abs(den)<1e-9)return null;
+ const t=((x1-px)*sy-(y1-py)*sx)/den;
+ const u=((x1-px)*dy-(y1-py)*dx)/den;
+ if(t>1e-7 && u>=0 && u<=1)return {t,u,x:px+dx*t,y:py+dy*t};
+ return null;
+}
+function reflectPath(b){
+ // Shoot directly toward the tapped/released position.
+ let x=cursor.x,y=cursor.y;
+ let dx=Math.cos(pullAngle),dy=Math.sin(pullAngle);
+ // angle is the travel direction.
+ const pts=[{x,y}];
+ for(let k=0;k<reflections;k++){
+   const hits=[
+    rayToSegment(x,y,dx,dy,b.l,b.t,b.r,b.t),
+    rayToSegment(x,y,dx,dy,b.r,b.t,b.r,b.b),
+    rayToSegment(x,y,dx,dy,b.r,b.b,b.l,b.b),
+    rayToSegment(x,y,dx,dy,b.l,b.b,b.l,b.t)
+   ].filter(Boolean).sort((a,c)=>a.t-c.t);
+   if(!hits.length)break;
+   const h=hits[0]; pts.push({x:h.x,y:h.y});
+   if(Math.abs(h.x-b.l)<1e-3||Math.abs(h.x-b.r)<1e-3) dx=-dx;
+   else dy=-dy;
+   x=h.x+dx*.05;y=h.y+dy*.05;
+ }
+ // Continue last segment to boundary/long distance.
+ let ex=x+dx*Math.max(imgW,imgH)*2, ey=y+dy*Math.max(imgW,imgH)*2;
+ const last= [
+   rayToSegment(x,y,dx,dy,b.l,b.t,b.r,b.t),
+   rayToSegment(x,y,dx,dy,b.r,b.t,b.r,b.b),
+   rayToSegment(x,y,dx,dy,b.r,b.b,b.l,b.b),
+   rayToSegment(x,y,dx,dy,b.l,b.b,b.l,b.t)
+ ].filter(Boolean).sort((a,c)=>a.t-c.t)[0];
+ if(last){ex=last.x;ey=last.y}
+ pts.push({x:ex,y:ey});
+ return pts;
+}
+function drawReflection(b){
+ const pts=reflectPath(b);
+ ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=7;
+ // The first segment (0反射) is always red. Every segment after the
+ // first wall hit is always white, regardless of the selected count.
+ for(let i=0;i<pts.length-1;i++){
+   ctx.strokeStyle = (i===0) ? 'rgba(255,55,55,.98)' : '#fff';
+   ctx.beginPath();
+   ctx.moveTo(pts[i].x,pts[i].y);
+   ctx.lineTo(pts[i+1].x,pts[i+1].y);
+   ctx.stroke();
+ }
+ // Larger hexagonal collision markers.
+ for(let i=1;i<pts.length-1;i++){
+   const p=pts[i], r=34;
+   ctx.save();
+   ctx.beginPath();
+   for(let j=0;j<6;j++){
+     const a=Math.PI/6+j*Math.PI/3;
+     const xx=p.x+Math.cos(a)*r, yy=p.y+Math.sin(a)*r;
+     if(j===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
+   }
+   ctx.closePath();
+   ctx.fillStyle='rgba(40,255,255,.12)';ctx.fill();
+   ctx.strokeStyle='rgba(40,255,255,.95)';ctx.lineWidth=6;ctx.stroke();
+   ctx.font='bold 20px "Comic Reggae","ComicReggae",-apple-system,BlinkMacSystemFont,sans-serif';
+   ctx.fillStyle='#69ff6b';ctx.fillText(String(i),p.x+40,p.y-35);
+   ctx.restore();
+ }
+}
+// Convert pointer from canvas CSS pixels to image coordinates.
+function pos(e){
+ const r=cv.getBoundingClientRect();
+ return {x:(e.clientX-r.left)*imgW/r.width,y:(e.clientY-r.top)*imgH/r.height};
+}
+function nearestArm(p){
+ const x=cursor.x,y=cursor.y;
+ const R=Math.max(68,Math.min(imgW,imgH)*0.065)*cursorSize;
+ const L=150*cursorSize,gap=R+5*cursorSize,w=58*cursorSize;
+ for(let i=0;i<4;i++){
+   const a=pullAngle+Math.PI/4+i*Math.PI/2;
+   const ux=Math.cos(a),uy=Math.sin(a);
+   const ax=x+ux*gap,ay=y+uy*gap,bx=x+ux*(gap+L),by=y+uy*(gap+L);
+   const vx=bx-ax,vy=by-ay,len2=vx*vx+vy*vy;
+   const t=Math.max(0,Math.min(1,((p.x-ax)*vx+(p.y-ay)*vy)/len2));
+   const qx=ax+vx*t,qy=ay+vy*t;
+   if(Math.hypot(p.x-qx,p.y-qy)<=w)return i;
+ }
+ return -1;
+}
+cv.addEventListener('pointerdown',e=>{
+ if(stage.hidden || zoomMode)return;
+ cv.setPointerCapture(e.pointerId);
+ const p=pos(e), arm=nearestArm(p);
+ active=arm>=0?'move':'angle';
+ lastX=p.x;lastY=p.y;
+ touchStartX=p.x;touchStartY=p.y;
+ if(active==='angle'){
+   const vx=p.x-cursor.x, vy=p.y-cursor.y;
+   if(Math.hypot(vx,vy)>1) pullAngle=Math.atan2(-vy,-vx);
+   updateAngleUI(); draw();
+ }
+ e.preventDefault();
+});
+cv.addEventListener('pointermove',e=>{
+ if(!active)return;
+ // Safari/iPhoneでも可能な限り細かいpointerイベントをすべて処理し、角度を丸めません。
+ const events=e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+ for(const ev of events){
+   const p=pos(ev);
+   if(active==='move'){
+     // Move the whole cursor with the selected arm; the arm stays in the hand.
+     cursor.x=Math.max(0,Math.min(imgW,cursor.x+(p.x-lastX)));
+     cursor.y=Math.max(0,Math.min(imgH,cursor.y+(p.y-lastY)));
+   }else{
+     // 指の位置から連続値の角度を直接計算。1°刻みにはしません。
+     const vx=p.x-touchStartX, vy=p.y-touchStartY;
+     if(Math.hypot(vx,vy)>0.01){
+       pullAngle=Math.atan2(-vy,-vx);
+     }
+   }
+   lastX=p.x;lastY=p.y;
+ }
+ updateAngleUI(); draw();
+ e.preventDefault();
+});
+function resizeAngleGuide(){
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  angleGuide.width=Math.round(innerWidth*dpr);
+  angleGuide.height=Math.round(innerHeight*dpr);
+  angleGuideCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+function drawAngleGuide(progress,angle){
+  const w=innerWidth,h=innerHeight;
+  angleGuideCtx.clearRect(0,0,w,h);
+  if(progress<=0)return;
+  // 3 cm程度（CSS px換算で約114px）の長さを、0.3秒かけて伸ばします。
+  const maxLen=Math.min(114,Math.min(w,h)*0.28);
+  const len=maxLen*progress;
+  const cx=w/2,cy=h/2;
+  const ux=Math.cos(angle),uy=Math.sin(angle);
+  const x1=cx-ux*len/2,y1=cy-uy*len/2;
+  const x2=cx+ux*len/2,y2=cy+uy*len/2;
+  angleGuideCtx.save();
+  angleGuideCtx.lineCap='round';
+  // iPhoneのアクセシビリティ系タッチ表示を意識した、半透明で太めの線。
+  angleGuideCtx.strokeStyle='rgba(255,255,255,.34)';
+  angleGuideCtx.lineWidth=28;
+  angleGuideCtx.beginPath();angleGuideCtx.moveTo(x1,y1);angleGuideCtx.lineTo(x2,y2);angleGuideCtx.stroke();
+  // 始点・終点を細い線で示します。
+  angleGuideCtx.strokeStyle='rgba(255,255,255,.62)';
+  angleGuideCtx.lineWidth=2;
+  const nx=-uy,ny=ux,cap=10;
+  angleGuideCtx.beginPath();
+  angleGuideCtx.moveTo(x1-nx*cap,y1-ny*cap);angleGuideCtx.lineTo(x1+nx*cap,y1+ny*cap);
+  angleGuideCtx.moveTo(x2-nx*cap,y2-ny*cap);angleGuideCtx.lineTo(x2+nx*cap,y2+ny*cap);
+  angleGuideCtx.stroke();
+  // 線の中央に細いガイドを重ねます。
+  angleGuideCtx.strokeStyle='rgba(255,255,255,.48)';
+  angleGuideCtx.lineWidth=2;
+  angleGuideCtx.beginPath();angleGuideCtx.moveTo(x1,y1);angleGuideCtx.lineTo(x2,y2);angleGuideCtx.stroke();
+  angleGuideCtx.restore();
+}
+function animateAngleGuide(angle){
+  const started=performance.now();
+  const duration=GAUGE_DURATION_MS;
+  const frame=++angleGuideFrame;
+  const tick=now=>{
+    if(frame!==angleGuideFrame)return;
+    const p=Math.min(1,(now-started)/duration);
+    // 少しだけ滑らかに伸びる
+    const eased=1-Math.pow(1-p,3);
+    drawAngleGuide(eased,angle);
+    if(p<1)requestAnimationFrame(tick);
+    else setTimeout(()=>{if(frame===angleGuideFrame)angleGuideCtx.clearRect(0,0,innerWidth,innerHeight);},80);
+  };
+  requestAnimationFrame(tick);
+}
+resizeAngleGuide();
+window.addEventListener('resize',resizeAngleGuide);
+angleGuideCtx.clearRect(0,0,innerWidth,innerHeight);
+
+function updateAngleUI(){
+ const deg=((pullAngle*180/Math.PI)%360+360)%360;
+ const rounded=Math.round(deg)%360;
+ document.getElementById('angleDisplay').querySelector('.angleValue').textContent=deg.toFixed(2)+'°';
+}
+function end(e){
+ if(active==='angle' && e){
+   const p=pos(e);
+   const vx=p.x-touchStartX, vy=p.y-touchStartY;
+   if(Math.hypot(vx,vy)>2){
+     pullAngle=Math.atan2(-vy,-vx);
+   }
+   updateAngleUI(); draw();
+ }
+ active=null;
+}
+
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+
+function updateCount(){
+  const num=nEl.querySelector('.num');
+  const max=nEl.querySelector('.maxLabel');
+  num.textContent=reflections;
+  max.textContent=reflections===20?'MAX':'';
+  nEl.classList.toggle('max',reflections===20);
+}
+
+const settingsBtn=document.getElementById('settingsBtn');
+const settingsPanel=document.getElementById('settingsPanel');
+const settingsBack=document.getElementById('settingsBack');
+const settingsSubBack=document.getElementById('settingsSubBack');
+const wallTab=document.getElementById('wallTab'), cursorTab=document.getElementById('cursorTab'), menuTab=document.getElementById('menuTab');
+const adjust=document.getElementById('adjust'), cursorAdjust=document.getElementById('cursorAdjust'), menuAdjust=document.getElementById('menuAdjust');
+let barDrag=false, barDX=0, barDY=0;
+const bar=document.getElementById('bar');
+let menuScale=1, wallAdjustMode=false, cursorAdjustMode=false, menuAdjustMode=false;
+try{const savedCursor=localStorage.getItem('monstCursorSize');if(savedCursor!==null&&Number.isFinite(Number(savedCursor)))cursorSize=Math.max(.55,Math.min(1.6,Number(savedCursor)));const savedMenu=localStorage.getItem('monstMenuScale');if(savedMenu!==null&&Number.isFinite(Number(savedMenu)))menuScale=Math.max(.75,Math.min(1.3,Number(savedMenu)));}catch(e){}
+let settingsOpen=false, settingsSubOpen=false, panelSavedPosition=null, panelMoved=false, settingsOriginalPosition=null;
+let settingsPositionChanged=false;
+function applyBarTransform(){
+ if(bar.style.left && bar.style.bottom==='auto'){bar.style.transformOrigin='top left';bar.style.transform=`scale(${menuScale})`;}
+ else {bar.style.transformOrigin='center center';bar.style.transform=`translateX(-50%) scale(${menuScale})`;}
+}
+function isInteractiveBarTarget(el){return !!el.closest('button,input');}
+bar.addEventListener('pointerdown',e=>{
+ if(settingsOpen)markSettingsMove();
+ if(isInteractiveBarTarget(e.target))return; e.preventDefault();
+ const r=bar.getBoundingClientRect(); barDrag=true; bar.classList.add('dragging');
+ barDX=e.clientX-r.left; barDY=e.clientY-r.top; bar.style.left=r.left+'px';bar.style.top=r.top+'px';bar.style.bottom='auto';applyBarTransform();
+ bar.setPointerCapture?.(e.pointerId);
+});
+bar.addEventListener('pointermove',e=>{if(!barDrag)return;const r=bar.getBoundingClientRect();let x=e.clientX-barDX,y=e.clientY-barDY;x=Math.max(4,Math.min(innerWidth-r.width-4,x));y=Math.max(4,Math.min(innerHeight-r.height-4,y));bar.style.left=x+'px';bar.style.top=y+'px';});
+function endBarDrag(){barDrag=false;bar.classList.remove('dragging');}
+bar.addEventListener('pointerup',endBarDrag);bar.addEventListener('pointercancel',endBarDrag);
+function hideSubPanels(){wallAdjustMode=false;cursorAdjustMode=false;menuAdjustMode=false;adjustMode=false;adjust.style.display='none';cursorAdjust.style.display='none';menuAdjust.style.display='none';}
+function saveCurrentBarPosition(){const r=bar.getBoundingClientRect();panelSavedPosition={left:r.left,top:r.top};panelMoved=false;}
+function restorePanelPosition(){
+ if(!panelSavedPosition || panelMoved)return;
+ bar.style.left=panelSavedPosition.left+'px';bar.style.top=panelSavedPosition.top+'px';bar.style.bottom='auto';applyBarTransform();
+}
+function markSettingsMove(){panelMoved=true;settingsPositionChanged=true;}
+function restoreAfterSettings(){if(panelSavedPosition&&!settingsPositionChanged&&!panelMoved){bar.style.left=panelSavedPosition.left+'px';bar.style.top=panelSavedPosition.top+'px';bar.style.bottom='auto';applyBarTransform();}}
+function liftBar(){const r=bar.getBoundingClientRect(),h=bar.offsetHeight;let top=r.top;if(top+h>innerHeight-4)top=Math.max(4,innerHeight-h-4);if(top<4)top=4;bar.style.left=r.left+'px';bar.style.top=top+'px';bar.style.bottom='auto';applyBarTransform();}
+function enterSettings(){
+ // 設定画面へ切り替える前の位置を保存
+ saveCurrentBarPosition();
+ settingsPositionChanged=false;
+ settingsOpen=true;settingsSubOpen=false;
+ document.body.classList.add('settings-mode');document.body.classList.remove('settings-sub-mode');
+ hideSubPanels();settingsPanel.classList.add('open');settingsPanel.style.display='flex';
+ requestAnimationFrame(liftBar);
+}
+function exitSettings(){
+ restoreAfterSettings();
+ hideSubPanels();settingsSubOpen=false;settingsOpen=false;
+ document.body.classList.remove('settings-sub-mode','settings-mode');
+ settingsPanel.classList.remove('open');settingsPanel.style.display='';
+ panelSavedPosition=null;panelMoved=false;
+ draw();
+}
+settingsBtn.onclick=()=>{if(settingsOpen)exitSettings();else enterSettings();};
+settingsBack.onclick=exitSettings;
+function openPanel(kind){
+ if(!settingsOpen)enterSettings();
+ settingsSubOpen=true;hideSubPanels();
+ document.body.classList.add('settings-sub-mode');settingsPanel.classList.remove('open');settingsPanel.style.display='';
+ if(kind==='wall'){wallAdjustMode=true;adjustMode=true;adjust.style.display='flex';}
+ if(kind==='cursor'){cursorAdjustMode=true;adjustMode=false;cursorAdjust.style.display='flex';}
+ if(kind==='menu'){menuAdjustMode=true;adjustMode=false;menuAdjust.style.display='flex';}
+ requestAnimationFrame(()=>{liftBar();draw();});
+}
+settingsSubBack.onclick=()=>{
+ restorePanelPosition();
+ hideSubPanels();settingsSubOpen=false;
+ document.body.classList.remove('settings-sub-mode');document.body.classList.add('settings-mode');
+ settingsPanel.style.display='';settingsPanel.classList.add('open');
+ draw(); requestAnimationFrame(liftBar);
+};
+wallTab.onclick=()=>openPanel('wall');
+cursorTab.onclick=()=>openPanel('cursor');
+menuTab.onclick=()=>openPanel('menu');
+
+function moveWall(which,delta){
+ // 指定どおり、Yは「+で高く（上へ）／-で低く（下へ）」、Xは「+で右／-で左」。
+ if(which==='top') topY=Math.max(0,Math.min(1536,topY-delta));
+ if(which==='bottom') bottomY=Math.max(0,Math.min(1536,bottomY-delta));
+ if(which==='left') leftX=Math.max(0,Math.min(imgW,leftX+delta));
+ if(which==='right') rightX=Math.max(0,Math.min(imgW,rightX+delta));
+ updateWallInputs(); draw();
+}
+const wallTopMinus=document.getElementById('wallTopMinus');
+const wallTopPlus=document.getElementById('wallTopPlus');
+const wallBottomMinus=document.getElementById('wallBottomMinus');
+const wallBottomPlus=document.getElementById('wallBottomPlus');
+const wallLeftMinus=document.getElementById('wallLeftMinus');
+const wallLeftPlus=document.getElementById('wallLeftPlus');
+const wallRightMinus=document.getElementById('wallRightMinus');
+const wallRightPlus=document.getElementById('wallRightPlus');
+// Y: +で高く、-で低く。X: +で右、-で左。長押しは徐々に加速。
+bindRepeat(wallTopMinus,()=>moveWall('top',-1));
+bindRepeat(wallTopPlus,()=>moveWall('top',1));
+bindRepeat(wallBottomMinus,()=>moveWall('bottom',-1));
+bindRepeat(wallBottomPlus,()=>moveWall('bottom',1));
+bindRepeat(wallLeftMinus,()=>moveWall('left',-1));
+bindRepeat(wallLeftPlus,()=>moveWall('left',1));
+bindRepeat(wallRightMinus,()=>moveWall('right',-1));
+bindRepeat(wallRightPlus,()=>moveWall('right',1));
+const wallInputs={
+ top:document.getElementById('wallTopValue'),
+ bottom:document.getElementById('wallBottomValue'),
+ left:document.getElementById('wallLeftValue'),
+ right:document.getElementById('wallRightValue')
+};
+function updateWallInputs(){
+ wallInputs.top.value=Math.round(topY); wallInputs.bottom.value=Math.round(bottomY);
+ wallInputs.left.value=Math.round(leftX); wallInputs.right.value=Math.round(rightX);
+}
+function saveWallSettings(){
+ try{localStorage.setItem('monstWallSettings',JSON.stringify({top:Math.round(topY),bottom:Math.round(bottomY),left:Math.round(leftX),right:Math.round(rightX)}));}catch(e){}
+}
+function restoreWallSettings(){
+ try{
+   const raw=localStorage.getItem('monstWallSettings');
+   if(!raw)return;
+   const v=JSON.parse(raw);
+   if(Number.isFinite(v.top))topY=Math.max(0,Math.min(1536,v.top));
+   if(Number.isFinite(v.bottom))bottomY=Math.max(0,Math.min(1536,v.bottom));
+   if(Number.isFinite(v.left))leftX=Math.max(0,Math.min(imgW||1111,v.left));
+   if(Number.isFinite(v.right))rightX=Math.max(0,Math.min(imgW||1111,v.right));
+   updateWallInputs();draw();
+ }catch(e){}
+}
+function bindWallInput(input,which){
+ input.addEventListener('input',()=>{input.value=input.value.replace(/[^0-9]/g,'');});
+ input.addEventListener('change',()=>{
+   const raw=input.value.trim();
+   if(raw===''){updateWallInputs();return;}
+   const v=Number(raw);
+   if(which==='top') topY=Math.max(0,Math.min(1536,v));
+   if(which==='bottom') bottomY=Math.max(0,Math.min(1536,v));
+   if(which==='left') leftX=Math.max(0,Math.min(imgW,v));
+   if(which==='right') rightX=Math.max(0,Math.min(imgW,v));
+   updateWallInputs(); draw();
+ });
+}
+bindWallInput(wallInputs.top,'top'); bindWallInput(wallInputs.bottom,'bottom');
+bindWallInput(wallInputs.left,'left'); bindWallInput(wallInputs.right,'right');
+document.getElementById('wallReset').onclick=()=>{topY=296;bottomY=1030;leftX=54;rightX=1111;updateWallInputs();draw();};
+document.getElementById('wallSave').onclick=saveWallSettings;
+document.getElementById('wallRestore').onclick=restoreWallSettings;
+updateWallInputs();
+function saveCursorSize(){try{localStorage.setItem('monstCursorSize',String(cursorSize));}catch(e){}}
+document.getElementById('cursorSmaller').onclick=()=>{cursorSize=Math.max(.55,cursorSize-.05);saveCursorSize();draw();};
+document.getElementById('cursorLarger').onclick=()=>{cursorSize=Math.min(1.6,cursorSize+.05);saveCursorSize();draw();};
+document.getElementById('cursorReset').onclick=()=>{cursorSize=1;saveCursorSize();draw();};
+function changeMenuScale(delta){
+ const r=bar.getBoundingClientRect();
+ const cx=r.left+r.width/2, cy=r.top+r.height/2;
+ menuScale=Math.max(.75,Math.min(1.3,menuScale+delta));
+ try{localStorage.setItem('monstMenuScale',String(menuScale));}catch(e){}
+ bar.style.left=(cx-(r.width*menuScale/menuScale)/2)+'px';
+ bar.style.top=(cy-(r.height*menuScale/menuScale)/2)+'px';
+ bar.style.bottom='auto';
+ applyBarTransform();
+ const nr=bar.getBoundingClientRect();
+ bar.style.left=(cx-nr.width/2)+'px';bar.style.top=(cy-nr.height/2)+'px';applyBarTransform();
+ if(settingsSubOpen)panelMoved=true;
+}
+document.getElementById('menuSmaller').onclick=()=>changeMenuScale(-.05);
+document.getElementById('menuLarger').onclick=()=>changeMenuScale(.05);
+document.getElementById('menuReset').onclick=()=>{menuScale=1;try{localStorage.setItem('monstMenuScale','1');}catch(e){} applyBarTransform();};
+
+const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
+function changeAngle(delta){let deg=((pullAngle*180/Math.PI)%360+360)%360;deg=(Math.round(deg*100)+delta*100+36000)%36000/100;pullAngle=deg*Math.PI/180;updateAngleUI();draw();}
+
+// 長押し対応：最初は即時、その後は滑らかに連続変更
+function bindRepeat(btn,fn,mode='slow'){
+ let timeout=null, stopped=false, step=0;
+ const slowDelays=[240,120];
+ const fastDelays=[120,60];
+ const delays=mode==='fast'?fastDelays:slowDelays;
+ const stop=()=>{stopped=true;if(timeout){clearTimeout(timeout);timeout=null;}btn.classList.remove('repeatPressed');};
+ const tick=()=>{
+   if(stopped)return;
+   fn();
+   step=Math.min(step+1,delays.length-1);
+   timeout=setTimeout(tick,delays[step]);
+ };
+ btn.addEventListener('pointerdown',e=>{
+   e.preventDefault();e.stopPropagation();stopped=false;step=0;btn.classList.add('repeatPressed');fn();
+   timeout=setTimeout(tick,delays[0]);
+   btn.setPointerCapture?.(e.pointerId);
+ });
+ ['pointerup','pointercancel','pointerleave','lostpointercapture'].forEach(ev=>btn.addEventListener(ev,stop));
+}
+bindRepeat(plus,()=>{reflections=reflections===20?0:reflections+1;updateCount();draw();});
+bindRepeat(minus,()=>{reflections=reflections===0?20:reflections-1;updateCount();draw();});
+bindRepeat(anglePlus,()=>changeAngle(0.01),'fast');
+bindRepeat(angleMinus,()=>changeAngle(-0.01),'fast');
+updateCount();
+
+const gaugeBtn=document.getElementById('gaugeBtn');
+function saveGuideImage(){
+  if(stage.hidden || !imgW || !imgH){
+    alert('先に画像を選択してください。');
+    return;
+  }
+  // 選択した元画像に、現在canvasへ描かれているガイドをそのまま重ねて保存します。
+  const out=document.createElement('canvas');
+  out.width=imgW; out.height=imgH;
+  const octx=out.getContext('2d');
+  octx.drawImage(photo,0,0,imgW,imgH);
+  octx.drawImage(cv,0,0,imgW,imgH);
+  out.toBlob(blob=>{
+    if(!blob)return;
+    const fileName='monst-guide-'+new Date().toISOString().replace(/[:.]/g,'-')+'.png';
+    const file=new File([blob],fileName,{type:'image/png'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:'モンスト ガイド画像'}).catch(()=>{});
+      return;
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  },'image/png');
+}
+gaugeBtn.onclick=saveGuideImage;
+const zoomBtn=document.getElementById('zoomBtn');
+let panX=0,panY=0,panStartX=0,panStartY=0,panBaseX=0,panBaseY=0,panActive=false;
+function applyStageTransform(){stage.style.transform=`translate3d(${panX}px,${panY}px,0) scale(${zoomScale})`;}
+zoomBtn.onclick=()=>{
+ zoomMode=!zoomMode;
+ zoomBtn.textContent=zoomMode?'解除':'拡大';
+ zoomBtn.classList.toggle('active',zoomMode);
+ if(!zoomMode){zoomScale=1;panX=0;panY=0;applyStageTransform();}else active=null;
+};
+function touchDist(a,b){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+cv.addEventListener('touchstart',e=>{
+ if(!zoomMode)return;
+ if(e.touches.length===2){
+   e.preventDefault(); panActive=false;
+   zoomStartDist=touchDist(e.touches[0],e.touches[1]); zoomStartScale=zoomScale;
+ }else if(e.touches.length===1){
+   e.preventDefault();
+   panActive=true; panStartX=e.touches[0].clientX; panStartY=e.touches[0].clientY; panBaseX=panX; panBaseY=panY;
+ }
+},{passive:false});
+cv.addEventListener('touchmove',e=>{
+ if(!zoomMode)return;
+ if(e.touches.length===2){
+   e.preventDefault(); panActive=false;
+   const d=touchDist(e.touches[0],e.touches[1]);
+   if(zoomStartDist>0){zoomScale=Math.max(1,Math.min(4,zoomStartScale*d/zoomStartDist));applyStageTransform();}
+ }else if(e.touches.length===1 && panActive){
+   e.preventDefault();
+   panX=panBaseX+(e.touches[0].clientX-panStartX);
+   panY=panBaseY+(e.touches[0].clientY-panStartY);
+   applyStageTransform();
+ }
+},{passive:false});
+cv.addEventListener('touchend',e=>{if(zoomMode && e.touches.length===0)panActive=false;},{passive:false});
+document.addEventListener('selectstart',e=>e.preventDefault(),{passive:false});
+document.addEventListener('copy',e=>e.preventDefault(),{passive:false});
+document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+</script>
+</body>
+</html>

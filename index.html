@@ -601,7 +601,7 @@ function restorePanelPosition(){
 }
 function markSettingsMove(){panelMoved=true;settingsPositionChanged=true;}
 function restoreAfterSettings(){if(panelSavedPosition&&!settingsPositionChanged&&!panelMoved){bar.style.left=panelSavedPosition.left+'px';bar.style.top=panelSavedPosition.top+'px';bar.style.bottom='auto';applyBarTransform();}}
-function liftBar(){const r=bar.getBoundingClientRect(),h=bar.offsetHeight;let top=r.top;if(top+h>innerHeight-4)top=Math.max(4,innerHeight-h-4);if(top<4)top=4;bar.style.left=r.left+'px';bar.style.top=top+'px';bar.style.bottom='auto';applyBarTransform();}
+function liftBar(){}
 function enterSettings(){
  // 設定画面へ切り替える前の位置を保存
  saveCurrentBarPosition();
@@ -609,7 +609,6 @@ function enterSettings(){
  settingsOpen=true;settingsSubOpen=false;
  document.body.classList.add('settings-mode');document.body.classList.remove('settings-sub-mode');
  hideSubPanels();settingsPanel.classList.add('open');settingsPanel.style.display='flex';
- requestAnimationFrame(liftBar);
 }
 function exitSettings(){
  restoreAfterSettings();

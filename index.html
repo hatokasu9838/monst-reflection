@@ -55,18 +55,16 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 #angleGuide{display:none!important}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:16px;text-align:center;padding:30px;cursor:pointer}
 #file{display:none}
-@media(max-width:600px){
- #bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,174px) 100px;gap:7px;padding:8px}
- #fileBtn{grid-column:auto;min-width:0;width:100%;font-size:14px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
- #count{width:100%;min-width:0;grid-column:auto}
- #zoomBtn{width:100%;min-width:0;padding:0 3px;font-size:17px;grid-column:3;grid-row:1}
- #gaugeBtn{width:100%;min-width:0;padding:0;font-size:20px;grid-column:3;grid-row:2}
- #angleControls{justify-content:center;grid-column:2;grid-row:2}
- #angleDisplay{font-size:11px;opacity:.95;white-space:normal;min-width:56px;width:56px;text-align:center;line-height:1.05;display:flex;flex-direction:column;align-items:center;justify-content:center}#angleDisplay .angleValue{font-size:12px;line-height:14px;font-weight:700}
- #settingsTools{grid-column:1;grid-row:2;width:100%;justify-content:flex-start}
- #settingsBtn{width:58px;}
- #adjust,#cursorAdjust,#menuAdjust{grid-column:1/-1;max-height:34vh;overflow:auto;padding-left:52px;padding-right:52px}
-}
+#bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,174px) 100px;gap:7px;padding:8px}
+#fileBtn{grid-column:auto;min-width:0;width:100%;font-size:14px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#count{width:100%;min-width:0;grid-column:auto}
+#zoomBtn{width:100%;min-width:0;padding:0 3px;font-size:17px;grid-column:3;grid-row:1}
+#gaugeBtn{width:100%;min-width:0;padding:0;font-size:20px;grid-column:3;grid-row:2}
+#angleControls{justify-content:center;grid-column:2;grid-row:2}
+#angleDisplay{font-size:11px;opacity:.95;white-space:normal;min-width:56px;width:56px;text-align:center;line-height:1.05;display:flex;flex-direction:column;align-items:center;justify-content:center}#angleDisplay .angleValue{font-size:12px;line-height:14px;font-weight:700}
+#settingsTools{grid-column:1;grid-row:2;width:100%;justify-content:flex-start}
+#settingsBtn{width:58px;}
+#adjust,#cursorAdjust,#menuAdjust{grid-column:1/-1;max-height:34vh;overflow:auto;padding-left:52px;padding-right:52px}
 @media(max-width:430px){
  #bar{grid-template-columns:minmax(0,1fr) 146px 82px;gap:5px;padding:6px}
  button{height:54px}

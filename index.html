@@ -605,32 +605,41 @@ function restorePanelPosition(){
 }
 function markSettingsMove(){panelMoved=true;settingsPositionChanged=true;}
 function restoreAfterSettings(){
-  if(!panelSavedPosition || settingsPositionChanged || panelMoved) return;
-  if(panelSavedPosition.hasCustomTop){
-    bar.style.left = panelSavedPosition.left + 'px';
-    bar.style.top = panelSavedPosition.top + 'px';
-    bar.style.bottom = 'auto';
-  } else {
-    bar.style.left = '';
-    bar.style.top = '';
-    bar.style.bottom = 'max(8px, env(safe-area-inset-bottom))';
-  }
-  applyBarTransform();
+ if(!panelSavedPosition) return;
+ if(panelMoved){
+   return;
+ }
+ if(panelSavedPosition.hasCustomTop){
+   bar.style.left = panelSavedPosition.left + 'px';
+   bar.style.top = panelSavedPosition.top + 'px';
+   bar.style.bottom = 'auto';
+ } else {
+   bar.style.left = '';
+   bar.style.top = '';
+   bar.style.bottom = 'max(8px, env(safe-area-inset-bottom))';
+ }
+ applyBarTransform();
 }
 function liftBar(){}
+let settingsAutoLifting = false;
 function enterSettings(){
- // 設定画面へ切り替える前の位置を保存
  saveCurrentBarPosition();
- settingsPositionChanged=false;
- settingsOpen=true;settingsSubOpen=false;
- document.body.classList.add('settings-mode');document.body.classList.remove('settings-sub-mode');
- hideSubPanels();settingsPanel.classList.add('open');settingsPanel.style.display='flex';
- requestAnimationFrame(()=>{
-   const r=bar.getBoundingClientRect();
-   const maxTop=window.innerHeight - r.height - 8;
-   if(r.top > maxTop){
-     bar.style.top=Math.max(4, maxTop)+'px';
-     bar.style.bottom='auto';
+ settingsPositionChanged = false;
+ settingsAutoLifting = false;
+ settingsOpen = true;
+ settingsSubOpen = false;
+ document.body.classList.add('settings-mode');
+ document.body.classList.remove('settings-sub-mode');
+ hideSubPanels();
+ settingsPanel.classList.add('open');
+ settingsPanel.style.display = 'flex';
+ requestAnimationFrame(() => {
+   const r = bar.getBoundingClientRect();
+   const maxTop = window.innerHeight - r.height - 8;
+   if (r.top > maxTop) {
+     settingsAutoLifting = true;
+     bar.style.top = Math.max(4, maxTop) + 'px';
+     bar.style.bottom = 'auto';
    }
  });
 }

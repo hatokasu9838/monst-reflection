@@ -186,9 +186,8 @@ input{ -webkit-touch-callout:none; }
   </div>
   <div class="voiceField"><label for="voiceCommandName">読み上げ語句（何も入力しない場合は1になります）</label><input id="voiceCommandName" type="text" maxlength="80" value="" placeholder="タップして入力"></div>
   <div class="voiceField"><label for="voiceFileName">ファイル名</label><input id="voiceFileName" type="text" maxlength="100" value="" placeholder="タップして入力" autocomplete="off"></div>
-  <div class="voiceActions"><button id="voiceCancel" type="button">キャンセル</button><button id="voiceGenerate" type="button">保存</button></div>
- </div>
-</div>
+   <div class="voiceActions"><button id="voiceCancel" type="button">キャンセル</button><button id="voiceGenerate" type="button">保存</button></div>
+
   <!-- 既存ファイル一括変換エリア -->
   <div style="border-top: 1px solid #3d4658; margin-top: 16px; padding-top: 14px;">
     <h3 style="font-size: 15px; margin: 0 0 6px; color: #fff;">既存ファイルを一括変換</h3>
@@ -196,6 +195,8 @@ input{ -webkit-touch-callout:none; }
     <button id="voiceConvertBtn" type="button" style="width: 100%; height: 44px; font-size: 14px; background: #2c3c54; border-color: #4a6285;">既存ファイルを選択して変換・保存</button>
     <input id="voiceConvertFile" type="file" accept=".voicecontrolcommands" style="display: none;">
   </div>
+ </div>
+</div>
 <div id="wrap">
   <div id="gaugeOverlay" aria-hidden="true"><div id="gaugeLine"></div><div id="gaugeCore"></div><div id="gaugeCapStart"></div><div id="gaugeCapEnd" class="gaugeCapEnd"></div></div>
   <div id="empty">画像を選択</div>

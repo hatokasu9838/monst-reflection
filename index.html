@@ -950,10 +950,10 @@ document.getElementById('voiceCancel').addEventListener('click',()=>voiceModal.c
 voiceModal.addEventListener('click',e=>{if(e.target===voiceModal)voiceModal.classList.remove('open')});
 function voiceXmlEscape(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
 function voiceDataToBase64(bytes){let bin='';for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));return btoa(bin)}
-function makeVoiceGesture(lengthPx,durationSec,deviceScale){
+// 1. ジェスチャ生成関数（任意の角度に対応できるよう拡張）
+function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = pullAngle){
  const bytes=Uint8Array.from(atob(voiceGestureTemplateB64),c=>c.charCodeAt(0));
- const target=pullAngle-Math.PI;
- // 実機テンプレートの座標を維持し、端末のスケールに合わせて始点をスナップ。
+ const target=targetPullAngle-Math.PI;
  const baseX=voiceGesturePoints[0].x,baseY=voiceGesturePoints[0].y;
  const x1=Math.round(baseX*deviceScale)/deviceScale;
  const y1=Math.round(baseY*deviceScale)/deviceScale;
@@ -996,6 +996,7 @@ function makeVoiceGesture(lengthPx,durationSec,deviceScale){
  voiceGestureTimes.forEach(t=>view.setFloat64(t.offset,t0+(t.value-t0)*factor,false));
  return voiceDataToBase64(bytes);
 }
+
 document.getElementById('voiceGenerate').addEventListener('click',()=>{
  try{
   const deviceProfile=getVoiceDeviceProfile();
@@ -1017,28 +1018,30 @@ document.getElementById('voiceGenerate').addEventListener('click',()=>{
  }catch(err){alert(err.message||'ファイル生成に失敗しました。')}
 });
 
-// 既存 .voicecontrolcommands ファイルの一括時間変換処理
-function convertGestureDuration(b64, durationSec){
+// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理
+function convertGestureDuration(b64, durationSec, lengthPx, deviceScale){
   try{
-    const bytes = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
-    if(bytes.length < 832) return b64;
-    const view = new DataView(bytes.buffer);
-    const offsets = [514, 653, 764, 824];
-    const t0 = view.getFloat64(offsets[0], false);
-    const tLast = view.getFloat64(offsets[3], false);
-    const oldDuration = tLast - t0;
-    if(oldDuration <= 0) return b64;
-    const factor = durationSec / Math.max(0.001, oldDuration);
-    offsets.forEach(off => {
-      const cur = view.getFloat64(off, false);
-      view.setFloat64(off, t0 + (cur - t0) * factor, false);
-    });
-    return voiceDataToBase64(bytes);
+    const raw = atob(b64.trim());
+    const matches = [...raw.matchAll(/\{([0-9.]+),\s*([0-9.]+)\}/g)];
+    if(!matches || matches.length === 0) return b64;
+    
+    const startX = 186.333333, startY = 372.333333;
+    const lastMatch = matches[matches.length - 1];
+    const endX = parseFloat(lastMatch[1]);
+    const endY = parseFloat(lastMatch[2]);
+    
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const extractedTargetAngle = Math.atan2(dy, dx);
+    const extractedPullAngle = extractedTargetAngle + Math.PI;
+
+    return makeVoiceGesture(lengthPx, durationSec, deviceScale, extractedPullAngle);
   }catch(e){
     return b64;
   }
 }
 
+// 3. ファイル選択イベント処理
 const voiceConvertBtn = document.getElementById('voiceConvertBtn');
 const voiceConvertFile = document.getElementById('voiceConvertFile');
 
@@ -1052,6 +1055,10 @@ if(voiceConvertBtn && voiceConvertFile){
     const file = e.target.files?.[0];
     if(!file) return;
 
+    const deviceProfile = getVoiceDeviceProfile();
+    const lengthPx = deviceProfile.lengthPx;
+    const deviceScale = deviceProfile.deviceScale;
+
     const customDurationValue = document.getElementById('voiceDuration').value.trim();
     const durationMode = durationModeInputs.find(input => input.checked)?.value || 'rapid';
     const durationSec = customDurationValue !== '' ? Number(customDurationValue) : (durationMode === 'gauge' ? 0.5 : 0.01);
@@ -1061,13 +1068,21 @@ if(voiceConvertBtn && voiceConvertFile){
       return;
     }
 
+    let suffix = '_converted';
+    if(customDurationValue !== ''){
+      suffix = `_${durationSec}s`;
+    }else if(durationMode === 'gauge'){
+      suffix = '_ゲージ';
+    }else if(durationMode === 'rapid'){
+      suffix = '_速射';
+    }
+
     const reader = new FileReader();
     reader.onload = evt => {
       try{
         const xmlText = evt.target.result;
-        // ファイル内の全コマンド(CustomGesture)を一括変換
         const convertedXml = xmlText.replace(/<key>CustomGesture<\/key>\s*<data>([\s\S]*?)<\/data>/g, (match, b64) => {
-          return `<key>CustomGesture</key><data>${convertGestureDuration(b64, durationSec)}</data>`;
+          return `<key>CustomGesture</key><data>${convertGestureDuration(b64, durationSec, lengthPx, deviceScale)}</data>`;
         });
 
         const blob = new Blob([convertedXml], {type: 'application/octet-stream'});
@@ -1075,7 +1090,7 @@ if(voiceConvertBtn && voiceConvertFile){
         const a = document.createElement('a');
         a.href = url;
         const originalName = file.name.replace(/\.voicecontrolcommands$/i, '');
-        a.download = `${originalName}_converted.voicecontrolcommands`;
+        a.download = `${originalName}${suffix}.voicecontrolcommands`;
         document.body.appendChild(a);
         a.click();
         a.remove();

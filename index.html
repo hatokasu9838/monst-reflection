@@ -233,7 +233,7 @@ file.onchange=e=>{
  const f=e.target.files?.[0]; if(!f)return;
  const url=URL.createObjectURL(f);
  // Remember the most recently selected image for the ⚡︎ button.
-   photo.onload=()=>{
+ photo.onload=()=>{
    if(imgW>0 && imgH>0){
      window._cursorRelX=cursor.x/imgW;
      window._cursorRelY=cursor.y/imgH;
@@ -242,28 +242,28 @@ file.onchange=e=>{
    stage.hidden=false; empty.hidden=true;
    fitStage();
 
-   // ユーザーの保存設定がない場合、スクショの比率から全iPhone/iPadの壁判定をミリ単位で自動計算（1536基準統一版）
+   // スクショ全体に対する厳密なパーセンテージで全機種の壁判定を自動調整
    if(!localStorage.getItem('monstWallSettings')){
      const aspect = imgW / imgH;
 
      if(aspect >= 0.65){ 
-       // 【iPad全般 (4:3)】 1536基準スケール値
-       topY = 314.88;
-       bottomY = 1096.70;
-       leftX = Number((imgW * 0.1580).toFixed(2));
-       rightX = Number((imgW * 0.8420).toFixed(2));
+       // 【iPad系 (4:3)】
+       topY = Math.round(imgH * 0.2050);
+       bottomY = Math.round(imgH * 0.7140);
+       leftX = Math.round(imgW * 0.1580);
+       rightX = Math.round(imgW * 0.8420);
      } else if(aspect >= 0.52){ 
-       // 【ホームボタン付きiPhone全般 (SE1~3 / 6~8等 16:9)】 1536基準スケール値
-       topY = 325.63;
-       bottomY = 1089.02;
-       leftX = Number((imgW * 0.041034).toFixed(2));
-       rightX = Number((imgW * 0.967607).toFixed(2));
+       // 【iPhone SE / ホームボタン系 (16:9)】
+       topY = Math.round(imgH * 0.2120);
+       bottomY = Math.round(imgH * 0.7090);
+       leftX = Math.round(imgW * 0.0410);
+       rightX = Math.round(imgW * 0.9676);
      } else { 
-       // 【全画面iPhone全般 (11~16 Pro/Max/Plus/mini/14等 19.5:9)】 1536基準スケール値
-       topY = 314.88;
-       bottomY = 1029.10;
-       leftX = Number((imgW * 0.041034).toFixed(2));
-       rightX = Number((imgW * 0.967607).toFixed(2));
+       // 【iPhone 14 / 全画面系 (19.5:9)】
+       topY = Math.round(imgH * 0.1610);
+       bottomY = Math.round(imgH * 0.7170);
+       leftX = Math.round(imgW * 0.0410);
+       rightX = Math.round(imgW * 0.9676);
      }
      updateWallInputs();
    }
@@ -294,17 +294,13 @@ window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(gaugeOn)po
 // Wall coordinates are independent X/Y values based on the iPhone 14 reference.
 // They are adjusted individually; changing one side does not preserve a ratio.
 function bounds(){
- // 壁の基準座標はiPhone 14用の元の座標系を維持します。
- // Xはそのまま、Yだけ元の1536基準から画像の高さへ変換します。
- const refH=1536;
  return {
    l:Math.max(0,Math.min(imgW,leftX)),
    r:Math.max(0,Math.min(imgW,rightX)),
-   t:Math.max(0,Math.min(imgH,(topY/refH)*imgH)),
-   b:Math.max(0,Math.min(imgH,(bottomY/refH)*imgH))
+   t:Math.max(0,Math.min(imgH,topY)),
+   b:Math.max(0,Math.min(imgH,bottomY))
  };
 }
-
 function draw(){
  if(!imgW)return;
  ctx.clearRect(0,0,imgW,imgH);

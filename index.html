@@ -593,13 +593,30 @@ bar.addEventListener('pointermove',e=>{if(!barDrag)return;const r=bar.getBoundin
 function endBarDrag(){barDrag=false;bar.classList.remove('dragging');}
 bar.addEventListener('pointerup',endBarDrag);bar.addEventListener('pointercancel',endBarDrag);
 function hideSubPanels(){wallAdjustMode=false;cursorAdjustMode=false;menuAdjustMode=false;adjustMode=false;adjust.style.display='none';cursorAdjust.style.display='none';menuAdjust.style.display='none';}
-function saveCurrentBarPosition(){const r=bar.getBoundingClientRect();panelSavedPosition={left:r.left,top:r.top};panelMoved=false;}
+function saveCurrentBarPosition(){
+  const r=bar.getBoundingClientRect();
+  const hasCustomTop = !!bar.style.top && bar.style.top !== 'auto';
+  panelSavedPosition = { left: r.left, top: r.top, hasCustomTop };
+  panelMoved = false;
+}
 function restorePanelPosition(){
  if(!panelSavedPosition || panelMoved)return;
  bar.style.left=panelSavedPosition.left+'px';bar.style.top=panelSavedPosition.top+'px';bar.style.bottom='auto';applyBarTransform();
 }
 function markSettingsMove(){panelMoved=true;settingsPositionChanged=true;}
-function restoreAfterSettings(){if(panelSavedPosition&&!settingsPositionChanged&&!panelMoved){bar.style.left=panelSavedPosition.left+'px';bar.style.top=panelSavedPosition.top+'px';bar.style.bottom='auto';applyBarTransform();}}
+function restoreAfterSettings(){
+  if(!panelSavedPosition || settingsPositionChanged || panelMoved) return;
+  if(panelSavedPosition.hasCustomTop){
+    bar.style.left = panelSavedPosition.left + 'px';
+    bar.style.top = panelSavedPosition.top + 'px';
+    bar.style.bottom = 'auto';
+  } else {
+    bar.style.left = '';
+    bar.style.top = '';
+    bar.style.bottom = 'max(8px, env(safe-area-inset-bottom))';
+  }
+  applyBarTransform();
+}
 function liftBar(){}
 function enterSettings(){
  // 設定画面へ切り替える前の位置を保存

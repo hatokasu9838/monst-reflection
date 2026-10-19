@@ -771,9 +771,6 @@ function bindWallInput(input,which){
 bindWallInput(wallInputs.top,'top'); bindWallInput(wallInputs.bottom,'bottom');
 bindWallInput(wallInputs.left,'left'); bindWallInput(wallInputs.right,'right');
 document.getElementById('wallReset').onclick=()=>{topY=314.88;bottomY=1029.10;leftX=48.01;rightX=1132.10;updateWallInputs();draw();};
-  topY=314.88; bottomY=1029.10; leftX=48.01; rightX=1132.10;
-  updateWallInputs(); draw();
-};
 document.getElementById('wallSave').onclick=saveWallSettings;
 document.getElementById('wallRestore').onclick=restoreWallSettings;
 restoreWallSettings();

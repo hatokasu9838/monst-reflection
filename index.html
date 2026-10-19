@@ -167,14 +167,14 @@ input{ -webkit-touch-callout:none; }
  <div class="voiceCard">
   <h2 id="voiceTitle">音声コマンドファイルを生成</h2>
   <p class="voiceHint">現在の角度のvoicecontrolcommandsファイルを生成します。読み上げ語句は「あ」や「1」などの音声コントロール上で設定することの出来ない4文字以下の語句を使用することもできます。</p>
-  <div style="overflow: hidden; white-space: nowrap; width: 100%; margin-top: 8px;">
+  <div id="voiceNoticeWrap" style="overflow: hidden; width: 100%; margin-top: 8px;">
   <style>
     @keyframes voiceMarquee {
       0% { transform: translateX(0); }
       100% { transform: translateX(-100%); }
     }
   </style>
-  <p style="display: inline-block; white-space: nowrap; padding-left: 100%; animation: voiceMarquee 15s linear infinite; color: #ff4d4d; font-weight: bold; font-size: 12px; margin: 0;">※注意※iPhoneSEなどの画面の小さい端末の場合スケールフィルターが@2xのため生成した角度から0.01°~0.02°程ズレが生じます。</p>
+  <p id="voiceNoticeText" style="color: #ff4d4d; font-weight: bold; font-size: 12px; margin: 0; line-height: 1.45;">※注意※iPhoneSEなどの画面の小さい端末の場合スケールフィルターが@2xのため生成した角度から0.01°~0.02°程ズレが生じます。</p>
 </div>
   <div class="voiceField">
    <label>なぞるのにかける時間</label>

@@ -512,7 +512,7 @@ resizeAngleGuide();
 window.addEventListener('resize',resizeAngleGuide);
 angleGuideCtx.clearRect(0,0,innerWidth,innerHeight);
 function updateAngleUI(){
- let deg = (90 - pullAngle * 180 / Math.PI) % 360;
+ let deg = (-pullAngle * 180 / Math.PI) % 360;
  if(deg < 0) deg += 360;
  document.getElementById('angleDisplay').querySelector('.angleValue').textContent = deg.toFixed(2) + '°';
 }
@@ -523,7 +523,8 @@ function updateAngleUI(){
  function openEditor(){
   if(display.querySelector('input'))return;
   const valueEl=display.querySelector('.angleValue');
-  const current=((pullAngle*180/Math.PI)%360+360)%360;
+  let current = (-pullAngle * 180 / Math.PI) % 360;
+  if(current < 0) current += 360;
   const input=document.createElement('input');
   input.type='number'; input.inputMode='decimal'; input.min='0'; input.max='359.99'; input.step='0.01';
   input.value=current.toFixed(2); input.setAttribute('aria-label','角度を入力');
@@ -531,7 +532,13 @@ function updateAngleUI(){
   valueEl.replaceWith(input);
   const finish=(commit)=>{
    if(!input.isConnected)return;
-   if(commit){let n=Number(input.value);if(!Number.isFinite(n)||input.value.trim()==='')n=current;n=Math.max(0,Math.min(359.99,n));n=Math.round(n*100)/100;pullAngle=n*Math.PI/180;}
+   if(commit){
+     let n=Number(input.value);
+     if(!Number.isFinite(n)||input.value.trim()==='') n=current;
+     n=Math.max(0,Math.min(359.99,n));
+     n=Math.round(n*100)/100;
+     pullAngle = -n * Math.PI / 180;
+   }
    const span=document.createElement('span');span.className='angleValue';input.replaceWith(span);updateAngleUI();draw();
   };
   input.addEventListener('blur',()=>finish(true),{once:true});

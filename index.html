@@ -167,7 +167,15 @@ input{ -webkit-touch-callout:none; }
  <div class="voiceCard">
   <h2 id="voiceTitle">音声コマンドファイルを生成</h2>
   <p class="voiceHint">現在の角度のvoicecontrolcommandsファイルを生成します。読み上げ語句は「あ」や「1」などの音声コントロール上で設定することの出来ない4文字以下の語句を使用することもできます。</p>
-  <p class="voiceHint" style="color: #ff4d4d; font-weight: bold; margin-top: 6px;">※注意※iPhoneSEなどの画面の小さい端末の場合スケールフィルターが@2xのため生成した角度から0.01°~0.02°程ズレが生じます。</p>
+  <div style="overflow: hidden; white-space: nowrap; width: 100%; margin-top: 8px;">
+  <style>
+    @keyframes voiceMarquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+  <p style="display: inline-block; white-space: nowrap; padding-left: 100%; animation: voiceMarquee 15s linear infinite; color: #ff4d4d; font-weight: bold; font-size: 12px; margin: 0;">※注意※iPhoneSEなどの画面の小さい端末の場合スケールフィルターが@2xのため生成した角度から0.01°~0.02°程ズレが生じます。</p>
+</div>
   <div class="voiceField">
    <label>なぞるのにかける時間</label>
    <div class="durationOptions" role="radiogroup" aria-label="なぞるのにかける時間">
@@ -275,9 +283,10 @@ function draw(){
 
 function updateAdjustUI(){}
 function drawCalibration(b){
+ const s = imgW / 1170;
  ctx.save();
- ctx.setLineDash([12,8]);
- ctx.lineWidth=4;
+ ctx.setLineDash([12 * s, 8 * s]);
+ ctx.lineWidth = 4 * s;
  ctx.strokeStyle='rgba(0,220,255,.95)';
  ctx.beginPath();ctx.moveTo(b.l,b.t);ctx.lineTo(b.r,b.t);ctx.stroke();
  ctx.strokeStyle='rgba(255,100,80,.95)';
@@ -287,37 +296,35 @@ function drawCalibration(b){
  ctx.strokeStyle='rgba(180,140,255,.95)';
  ctx.beginPath();ctx.moveTo(b.r,b.t);ctx.lineTo(b.r,b.b);ctx.stroke();
  ctx.setLineDash([]);
- ctx.font='bold 12px -apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif';
- ctx.fillStyle='#00eaff';ctx.fillText('Y='+Math.round(topY),b.l+5,Math.max(14,b.t-6));
- ctx.fillStyle='#ff806a';ctx.fillText('Y='+Math.round(bottomY),b.l+5,Math.min(imgH-4,b.b+14));
- ctx.fillStyle='#78ffb4';ctx.fillText('X='+Math.round(leftX),b.l+5,Math.max(b.t+14,(b.t+b.b)/2));
- ctx.fillStyle='#b48cff';ctx.fillText('X='+Math.round(rightX),Math.max(b.l+5,b.r-42),Math.max(b.t+14,(b.t+b.b)/2));
+ ctx.font=`bold ${Math.round(12 * s)}px -apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif`;
+ ctx.fillStyle='#00eaff';ctx.fillText('Y='+Math.round(topY),b.l+5*s,Math.max(14*s,b.t-6*s));
+ ctx.fillStyle='#ff806a';ctx.fillText('Y='+Math.round(bottomY),b.l+5*s,Math.min(imgH-4*s,b.b+14*s));
+ ctx.fillStyle='#78ffb4';ctx.fillText('X='+Math.round(leftX),b.l+5*s,Math.max(b.t+14*s,(b.t+b.b)/2));
+ ctx.fillStyle='#b48cff';ctx.fillText('X='+Math.round(rightX),Math.max(b.l+5*s,b.r-42*s),Math.max(b.t+14*s,(b.t+b.b)/2));
  ctx.restore();
  updateAdjustUI();
 }
-
 function drawCursor(){
  const x=cursor.x,y=cursor.y;
- // Reference-app style cursor: a large orange circular target around the ball center.
- const R=Math.max(68,Math.min(imgW,imgH)*0.065)*cursorSize;
+ const s = imgW / 1170;
+ const R=Math.max(68 * s, Math.min(imgW,imgH)*0.065)*cursorSize;
  const rg=ctx.createRadialGradient(x,y,R*.15,x,y,R*1.75);
  rg.addColorStop(0,'rgba(255,150,35,.48)');
  rg.addColorStop(.45,'rgba(255,115,20,.28)');
  rg.addColorStop(1,'rgba(255,90,10,0)');
  ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,R*1.75,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='rgba(255,105,15,.13)';ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fill();
- ctx.strokeStyle='rgba(255,95,15,.95)';ctx.lineWidth=7;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.stroke();
- ctx.strokeStyle='rgba(255,225,145,.82)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,R+6,0,Math.PI*2);ctx.stroke();
- // Four thick white arms. They are the only move handles.
- const L=145*cursorSize, gap=R+7*cursorSize;
+ ctx.strokeStyle='rgba(255,95,15,.95)';ctx.lineWidth=7*s;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.stroke();
+ ctx.strokeStyle='rgba(255,225,145,.82)';ctx.lineWidth=3*s;ctx.beginPath();ctx.arc(x,y,R+6*s,0,Math.PI*2);ctx.stroke();
+ const L=145*cursorSize*s, gap=R+7*cursorSize*s;
  for(let i=0;i<4;i++){
    const a=pullAngle + Math.PI/4 + i*Math.PI/2;
    const x1=x+Math.cos(a)*gap,y1=y+Math.sin(a)*gap;
    const x2=x+Math.cos(a)*(gap+L),y2=y+Math.sin(a)*(gap+L);
-   ctx.strokeStyle='rgba(0,0,0,.16)';ctx.lineWidth=42*cursorSize;ctx.lineCap='round';
+   ctx.strokeStyle='rgba(0,0,0,.16)';ctx.lineWidth=42*cursorSize*s;ctx.lineCap='round';
    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-   ctx.strokeStyle='rgba(255,255,255,.58)';ctx.lineWidth=30*cursorSize;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-   ctx.fillStyle='rgba(255,255,255,.58)';ctx.beginPath();ctx.arc(x2,y2,17*cursorSize,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='rgba(255,255,255,.58)';ctx.lineWidth=30*cursorSize*s;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+   ctx.fillStyle='rgba(255,255,255,.58)';ctx.beginPath();ctx.arc(x2,y2,17*cursorSize*s,0,Math.PI*2);ctx.fill();
  }
 }
 
@@ -362,10 +369,9 @@ function reflectPath(b){
  return pts;
 }
 function drawReflection(b){
+ const s = imgW / 1170;
  const pts=reflectPath(b);
- ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=7;
- // The first segment (0反射) is always red. Every segment after the
- // first wall hit is always white, regardless of the selected count.
+ ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=7*s;
  for(let i=0;i<pts.length-1;i++){
    ctx.strokeStyle = (i===0) ? 'rgba(255,55,55,.98)' : '#fff';
    ctx.beginPath();
@@ -373,19 +379,17 @@ function drawReflection(b){
    ctx.lineTo(pts[i+1].x,pts[i+1].y);
    ctx.stroke();
  }
- // Larger hexagonal collision markers.
- // Small white dot at the final tip of the reflection line.
  if(pts.length){
    const end=pts[pts.length-1];
    ctx.save();
    ctx.beginPath();
-   ctx.arc(end.x,end.y,8,0,Math.PI*2);
+   ctx.arc(end.x,end.y,8*s,0,Math.PI*2);
    ctx.fillStyle='#fff';
    ctx.fill();
    ctx.restore();
  }
  for(let i=1;i<pts.length-1;i++){
-   const p=pts[i], r=34;
+   const p=pts[i], r=34*s;
    ctx.save();
    ctx.beginPath();
    for(let j=0;j<6;j++){
@@ -395,9 +399,9 @@ function drawReflection(b){
    }
    ctx.closePath();
    ctx.fillStyle='rgba(40,255,255,.12)';ctx.fill();
-   ctx.strokeStyle='rgba(40,255,255,.95)';ctx.lineWidth=6;ctx.stroke();
-   ctx.font='bold 20px "Reggae One","ComicReggae",-apple-system,BlinkMacSystemFont,sans-serif';
-   ctx.fillStyle='#69ff6b';ctx.fillText(String(i),p.x+40,p.y-35);
+   ctx.strokeStyle='rgba(40,255,255,.95)';ctx.lineWidth=6*s;ctx.stroke();
+   ctx.font=`bold ${Math.round(20*s)}px "Reggae One","ComicReggae",-apple-system,BlinkMacSystemFont,sans-serif`;
+   ctx.fillStyle='#69ff6b';ctx.fillText(String(i),p.x+40*s,p.y-35*s);
    ctx.restore();
  }
 }

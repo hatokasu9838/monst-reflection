@@ -189,6 +189,13 @@ input{ -webkit-touch-callout:none; }
   <div class="voiceActions"><button id="voiceCancel" type="button">キャンセル</button><button id="voiceGenerate" type="button">保存</button></div>
  </div>
 </div>
+  <!-- 既存ファイル一括変換エリア -->
+  <div style="border-top: 1px solid #3d4658; margin-top: 16px; padding-top: 14px;">
+    <h3 style="font-size: 15px; margin: 0 0 6px; color: #fff;">既存ファイルを一括変換</h3>
+    <p class="voiceHint" style="margin: 0 0 10px;">お手持ちの .voicecontrolcommands ファイル内の全コマンドを上記で選択した時間（速射/ゲージ等）に一括変換します。</p>
+    <button id="voiceConvertBtn" type="button" style="width: 100%; height: 44px; font-size: 14px; background: #2c3c54; border-color: #4a6285;">既存ファイルを選択して変換・保存</button>
+    <input id="voiceConvertFile" type="file" accept=".voicecontrolcommands" style="display: none;">
+  </div>
 <div id="wrap">
   <div id="gaugeOverlay" aria-hidden="true"><div id="gaugeLine"></div><div id="gaugeCore"></div><div id="gaugeCapStart"></div><div id="gaugeCapEnd" class="gaugeCapEnd"></div></div>
   <div id="empty">画像を選択</div>
@@ -1009,6 +1016,77 @@ document.getElementById('voiceGenerate').addEventListener('click',()=>{
  }catch(err){alert(err.message||'ファイル生成に失敗しました。')}
 });
 
+// 既存 .voicecontrolcommands ファイルの一括時間変換処理
+function convertGestureDuration(b64, durationSec){
+  try{
+    const bytes = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+    if(bytes.length < 832) return b64;
+    const view = new DataView(bytes.buffer);
+    const offsets = [514, 653, 764, 824];
+    const t0 = view.getFloat64(offsets[0], false);
+    const tLast = view.getFloat64(offsets[3], false);
+    const oldDuration = tLast - t0;
+    if(oldDuration <= 0) return b64;
+    const factor = durationSec / Math.max(0.001, oldDuration);
+    offsets.forEach(off => {
+      const cur = view.getFloat64(off, false);
+      view.setFloat64(off, t0 + (cur - t0) * factor, false);
+    });
+    return voiceDataToBase64(bytes);
+  }catch(e){
+    return b64;
+  }
+}
+
+const voiceConvertBtn = document.getElementById('voiceConvertBtn');
+const voiceConvertFile = document.getElementById('voiceConvertFile');
+
+if(voiceConvertBtn && voiceConvertFile){
+  voiceConvertBtn.addEventListener('click', ()=>{
+    voiceConvertFile.value = '';
+    voiceConvertFile.click();
+  });
+
+  voiceConvertFile.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+
+    const customDurationValue = document.getElementById('voiceDuration').value.trim();
+    const durationMode = durationModeInputs.find(input => input.checked)?.value || 'rapid';
+    const durationSec = customDurationValue !== '' ? Number(customDurationValue) : (durationMode === 'gauge' ? 0.5 : 0.01);
+
+    if(!Number.isFinite(durationSec) || durationSec < 0.01 || durationSec > 10){
+      alert('時間は0.01〜10秒の範囲で設定してください。');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try{
+        const xmlText = evt.target.result;
+        // ファイル内の全コマンド(CustomGesture)を一括変換
+        const convertedXml = xmlText.replace(/<key>CustomGesture<\/key>\s*<data>([\s\S]*?)<\/data>/g, (match, b64) => {
+          return `<key>CustomGesture</key><data>${convertGestureDuration(b64, durationSec)}</data>`;
+        });
+
+        const blob = new Blob([convertedXml], {type: 'application/octet-stream'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const originalName = file.name.replace(/\.voicecontrolcommands$/i, '');
+        a.download = `${originalName}_converted.voicecontrolcommands`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        voiceModal.classList.remove('open');
+      }catch(err){
+        alert('ファイルの変換に失敗しました。ファイル形式をご確認ください。');
+      }
+    };
+    reader.readAsText(file);
+  });
+}
 </script>
 </body>
 </html>

@@ -233,7 +233,7 @@ file.onchange=e=>{
  const f=e.target.files?.[0]; if(!f)return;
  const url=URL.createObjectURL(f);
  // Remember the most recently selected image for the ⚡︎ button.
- photo.onload=()=>{
+  photo.onload=()=>{
    if(imgW>0 && imgH>0){
      window._cursorRelX=cursor.x/imgW;
      window._cursorRelY=cursor.y/imgH;
@@ -241,7 +241,33 @@ file.onchange=e=>{
    imgW=photo.naturalWidth; imgH=photo.naturalHeight;
    stage.hidden=false; empty.hidden=true;
    fitStage();
-   // 画像を変更しても、カーソルの現在位置と角度を維持します。
+
+   // ユーザーの保存設定がない場合、スクショの比率から全iPhone/iPadの壁判定をミリ単位で自動計算
+   if(!localStorage.getItem('monstWallSettings')){
+     const aspect = imgW / imgH;
+
+     if(aspect >= 0.65){ 
+       // 【iPad全般 (Air / Pro / mini / 無印)】 左右の帯を考慮した精密比率
+       topY = Number((imgH * 0.2050).toFixed(2));
+       bottomY = Number((imgH * 0.6700).toFixed(2));
+       leftX = Number((imgW * 0.1580).toFixed(2));
+       rightX = Number((imgW * 0.8420).toFixed(2));
+     } else if(aspect >= 0.52){ 
+       // 【ホームボタン付きiPhone全般 (SE1~3 / 6~8等)】
+       topY = Number((imgH * 0.1380).toFixed(2));
+       bottomY = Number((imgH * 0.7090).toFixed(2));
+       leftX = Number((imgW * 0.041034).toFixed(2));
+       rightX = Number((imgW * 0.967607).toFixed(2));
+     } else { 
+       // 【全画面iPhone全般 (11~16 Pro/Max/Plus/mini/14等)】 実測比率（100%精密）
+       topY = 314.88;
+       bottomY = 1029.10;
+       leftX = Number((imgW * 0.041034).toFixed(2));
+       rightX = Number((imgW * 0.967607).toFixed(2));
+     }
+     updateWallInputs();
+   }
+
    const b=bounds();
    if(typeof window._cursorRelX==='number' && typeof window._cursorRelY==='number'){
      cursor.x=Math.max(0,Math.min(imgW,window._cursorRelX*imgW));
@@ -251,7 +277,6 @@ file.onchange=e=>{
    }
    updateAdjustUI(); updateAngleUI();
    draw();
-   if(gaugeOn)positionGauge();
  };
  photo.src=url;
 };
@@ -748,7 +773,10 @@ function bindWallInput(input,which){
 }
 bindWallInput(wallInputs.top,'top'); bindWallInput(wallInputs.bottom,'bottom');
 bindWallInput(wallInputs.left,'left'); bindWallInput(wallInputs.right,'right');
-document.getElementById('wallReset').onclick=()=>{topY=296;bottomY=1030;leftX=54;rightX=1111;updateWallInputs();draw();};
+document.getElementById('wallReset').onclick=()=>{
+  topY=314.88; bottomY=1029.10; leftX=48.01; rightX=1132.10;
+  updateWallInputs(); draw();
+};
 document.getElementById('wallSave').onclick=saveWallSettings;
 document.getElementById('wallRestore').onclick=restoreWallSettings;
 restoreWallSettings();

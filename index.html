@@ -608,6 +608,8 @@ function enterSettings(){
  settingsOpen=true;settingsSubOpen=false;
  document.body.classList.add('settings-mode');document.body.classList.remove('settings-sub-mode');
  hideSubPanels();settingsPanel.classList.add('open');settingsPanel.style.display='flex';
+ bar.style.top='auto';
+ bar.style.bottom='max(8px, env(safe-area-inset-bottom))';
 }
 function exitSettings(){
  restoreAfterSettings();

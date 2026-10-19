@@ -753,8 +753,6 @@ document.getElementById('menuSmaller').onclick=()=>changeMenuScale(-.05);
 document.getElementById('menuLarger').onclick=()=>changeMenuScale(.05);
 document.getElementById('menuReset').onclick=()=>{menuScale=1;try{localStorage.setItem('monstMenuScale','1');}catch(e){} applyBarTransform();};
 const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
-const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
-const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
 function changeAngle(delta){
   let currentDeg = (90 - pullAngle * 180 / Math.PI) % 360;
   if(currentDeg < 0) currentDeg += 360;

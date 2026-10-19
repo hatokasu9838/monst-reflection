@@ -513,8 +513,8 @@ window.addEventListener('resize',resizeAngleGuide);
 angleGuideCtx.clearRect(0,0,innerWidth,innerHeight);
 
 function updateAngleUI(){
- const deg=((pullAngle*180/Math.PI)%360+360)%360;
- const rounded=Math.round(deg)%360;
+ let deg=(-pullAngle*180/Math.PI)%360;
+ if(deg<0) deg+=360;
  document.getElementById('angleDisplay').querySelector('.angleValue').textContent=deg.toFixed(2)+'°';
 }
 

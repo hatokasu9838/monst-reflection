@@ -608,8 +608,14 @@ function enterSettings(){
  settingsOpen=true;settingsSubOpen=false;
  document.body.classList.add('settings-mode');document.body.classList.remove('settings-sub-mode');
  hideSubPanels();settingsPanel.classList.add('open');settingsPanel.style.display='flex';
- bar.style.top='auto';
- bar.style.bottom='max(8px, env(safe-area-inset-bottom))';
+ requestAnimationFrame(()=>{
+   const r=bar.getBoundingClientRect();
+   const maxTop=window.innerHeight - r.height - 8;
+   if(r.top > maxTop){
+     bar.style.top=Math.max(4, maxTop)+'px';
+     bar.style.bottom='auto';
+   }
+ });
 }
 function exitSettings(){
  restoreAfterSettings();

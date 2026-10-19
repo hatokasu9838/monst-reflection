@@ -644,12 +644,15 @@ function enterSettings(){
  });
 }
 function exitSettings(){
- restoreAfterSettings();
- hideSubPanels();settingsSubOpen=false;settingsOpen=false;
- document.body.classList.remove('settings-sub-mode','settings-mode');
- settingsPanel.classList.remove('open');settingsPanel.style.display='';
- panelSavedPosition=null;panelMoved=false;
- draw();
+ settingsOpen=false;settingsSubOpen=false;
+ document.body.classList.remove('settings-mode','settings-sub-mode');
+ settingsPanel.classList.remove('open');settingsPanel.style.display='none';
+ if(!panelMoved && (!panelSavedPosition || !panelSavedPosition.hasCustomTop)){
+   bar.style.top='';
+   bar.style.bottom='max(8px, env(safe-area-inset-bottom))';
+ } else {
+   restoreAfterSettings();
+ }
 }
 settingsBtn.onclick=()=>{if(settingsOpen)exitSettings();else enterSettings();};
 settingsBack.onclick=exitSettings;

@@ -242,28 +242,28 @@ file.onchange=e=>{
    stage.hidden=false; empty.hidden=true;
    fitStage();
 
-   // スクショ全体に対する厳密なパーセンテージで全機種の壁判定を自動調整
+   // ユーザーの保存設定がない場合、1536px基準の絶対値を機種ごとにセット
    if(!localStorage.getItem('monstWallSettings')){
      const aspect = imgW / imgH;
 
      if(aspect >= 0.65){ 
-       // 【iPad系 (4:3)】
-       topY = Math.round(imgH * 0.2050);
-       bottomY = Math.round(imgH * 0.7140);
-       leftX = Math.round(imgW * 0.1580);
-       rightX = Math.round(imgW * 0.8420);
+       // 【iPad全般 (4:3)】
+       topY = 314.88;
+       bottomY = 1096.70;
+       leftX = Number((imgW * 0.1580).toFixed(2));
+       rightX = Number((imgW * 0.8420).toFixed(2));
      } else if(aspect >= 0.52){ 
        // 【iPhone SE / ホームボタン系 (16:9)】
-       topY = Math.round(imgH * 0.2120);
-       bottomY = Math.round(imgH * 0.7090);
-       leftX = Math.round(imgW * 0.0410);
-       rightX = Math.round(imgW * 0.9676);
+       topY = 325.63;
+       bottomY = 1089.02;
+       leftX = Number((imgW * 0.041034).toFixed(2));
+       rightX = Number((imgW * 0.967607).toFixed(2));
      } else { 
-       // 【iPhone 14 / 全画面系 (19.5:9)】
-       topY = Math.round(imgH * 0.1610);
-       bottomY = Math.round(imgH * 0.7170);
-       leftX = Math.round(imgW * 0.0410);
-       rightX = Math.round(imgW * 0.9676);
+       // 【iPhone 14 / 全画面系 (19.5:9)】 ガイド実測100%一致値
+       topY = 314.88;
+       bottomY = 1029.10;
+       leftX = Number((imgW * 0.041034).toFixed(2));
+       rightX = Number((imgW * 0.967607).toFixed(2));
      }
      updateWallInputs();
    }
@@ -294,11 +294,12 @@ window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(gaugeOn)po
 // Wall coordinates are independent X/Y values based on the iPhone 14 reference.
 // They are adjusted individually; changing one side does not preserve a ratio.
 function bounds(){
+ const refH=1536;
  return {
    l:Math.max(0,Math.min(imgW,leftX)),
    r:Math.max(0,Math.min(imgW,rightX)),
-   t:Math.max(0,Math.min(imgH,topY)),
-   b:Math.max(0,Math.min(imgH,bottomY))
+   t:Math.max(0,Math.min(imgH,(topY/refH)*imgH)),
+   b:Math.max(0,Math.min(imgH,(bottomY/refH)*imgH))
  };
 }
 function draw(){
@@ -769,7 +770,7 @@ function bindWallInput(input,which){
 }
 bindWallInput(wallInputs.top,'top'); bindWallInput(wallInputs.bottom,'bottom');
 bindWallInput(wallInputs.left,'left'); bindWallInput(wallInputs.right,'right');
-document.getElementById('wallReset').onclick=()=>{
+document.getElementById('wallReset').onclick=()=>{topY=314.88;bottomY=1029.10;leftX=48.01;rightX=1132.10;updateWallInputs();draw();};
   topY=314.88; bottomY=1029.10; leftX=48.01; rightX=1132.10;
   updateWallInputs(); draw();
 };

@@ -1017,30 +1017,30 @@ document.getElementById('voiceGenerate').addEventListener('click',()=>{
   const blob=new Blob([xml],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fileName.toLowerCase().endsWith('.voicecontrolcommands')?fileName:fileName+'.voicecontrolcommands';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);voiceModal.classList.remove('open');
  }catch(err){alert(err.message||'ファイル生成に失敗しました。')}
 });
-
-// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理
+// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理（角度軸修正版）
 function convertGestureDuration(b64, durationSec, lengthPx, deviceScale){
   try{
     const raw = atob(b64.trim());
     const matches = [...raw.matchAll(/\{([0-9.]+),\s*([0-9.]+)\}/g)];
-    if(!matches || matches.length === 0) return b64;
+    if(!matches || matches.length < 2) return b64;
     
-    const startX = 186.333333, startY = 372.333333;
-    const lastMatch = matches[matches.length - 1];
-    const endX = parseFloat(lastMatch[1]);
-    const endY = parseFloat(lastMatch[2]);
+    // 実際のファイルデータから「始点」と「終点」を取得
+    const startX = parseFloat(matches[0][1]);
+    const startY = parseFloat(matches[0][2]);
+    const endX = parseFloat(matches[matches.length - 1][1]);
+    const endY = parseFloat(matches[matches.length - 1][2]);
     
     const dx = endX - startX;
     const dy = endY - startY;
-    const extractedTargetAngle = Math.atan2(dy, dx);
-    const extractedPullAngle = extractedTargetAngle + Math.PI;
+    
+    // ジェスチャ作成関数の内部計算（-Math.PI）と打ち消し合って100%同じ角度になるよう調整
+    const extractedPullAngle = Math.atan2(dy, dx) + Math.PI;
 
     return makeVoiceGesture(lengthPx, durationSec, deviceScale, extractedPullAngle);
   }catch(e){
     return b64;
   }
 }
-
 // 3. ファイル選択イベント処理
 const voiceConvertBtn = document.getElementById('voiceConvertBtn');
 const voiceConvertFile = document.getElementById('voiceConvertFile');

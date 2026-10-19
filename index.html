@@ -513,9 +513,9 @@ window.addEventListener('resize',resizeAngleGuide);
 angleGuideCtx.clearRect(0,0,innerWidth,innerHeight);
 
 function updateAngleUI(){
- let deg=(-pullAngle*180/Math.PI)%360;
- if(deg<0) deg+=360;
- document.getElementById('angleDisplay').querySelector('.angleValue').textContent=deg.toFixed(2)+'°';
+ let deg = (90 + pullAngle * 180 / Math.PI) % 360;
+ if(deg < 0) deg += 360;
+ document.getElementById('angleDisplay').querySelector('.angleValue').textContent = deg.toFixed(2) + '°';
 }
 
 // 角度表示をダブルタップすると数値キーボードで直接編集できます。
@@ -754,10 +754,15 @@ function changeMenuScale(delta){
 document.getElementById('menuSmaller').onclick=()=>changeMenuScale(-.05);
 document.getElementById('menuLarger').onclick=()=>changeMenuScale(.05);
 document.getElementById('menuReset').onclick=()=>{menuScale=1;try{localStorage.setItem('monstMenuScale','1');}catch(e){} applyBarTransform();};
-
 const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
-function changeAngle(delta){let deg=((pullAngle*180/Math.PI)%360+360)%360;deg=(Math.round(deg*100)+delta*100+36000)%36000/100;pullAngle=deg*Math.PI/180;updateAngleUI();draw();}
-
+function changeAngle(delta){
+  let currentDeg = (90 + pullAngle * 180 / Math.PI) % 360;
+  if(currentDeg < 0) currentDeg += 360;
+  let newDeg = (Math.round(currentDeg * 100) + delta * 100 + 36000) % 36000 / 100;
+  pullAngle = (newDeg - 90) * Math.PI / 180;
+  updateAngleUI();
+  draw();
+}
 // 長押し対応：反射は「通常速度→1段階だけ加速」。角度は従来の速度を維持。
 function bindRepeat(btn,fn,mode='slow'){
  let timeout=null, stopped=false, step=0;

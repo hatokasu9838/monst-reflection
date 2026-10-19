@@ -412,8 +412,9 @@ function pos(e){
 }
 function nearestArm(p){
  const x=cursor.x,y=cursor.y;
- const R=Math.max(68,Math.min(imgW,imgH)*0.065)*cursorSize;
- const L=150*cursorSize,gap=R+5*cursorSize,w=58*cursorSize;
+ const s = imgW / 1170;
+ const R=Math.max(68 * s,Math.min(imgW,imgH)*0.065)*cursorSize;
+ const L=150*cursorSize*s,gap=R+5*cursorSize*s,w=58*cursorSize*s;
  for(let i=0;i<4;i++){
    const a=pullAngle+Math.PI/4+i*Math.PI/2;
    const ux=Math.cos(a),uy=Math.sin(a);

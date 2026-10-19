@@ -754,11 +754,12 @@ document.getElementById('menuLarger').onclick=()=>changeMenuScale(.05);
 document.getElementById('menuReset').onclick=()=>{menuScale=1;try{localStorage.setItem('monstMenuScale','1');}catch(e){} applyBarTransform();};
 const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
 const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
+const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
 function changeAngle(delta){
   let currentDeg = (90 - pullAngle * 180 / Math.PI) % 360;
   if(currentDeg < 0) currentDeg += 360;
   let newDeg = (Math.round(currentDeg * 100) + delta * 100 + 36000) % 36000 / 100;
-  pullAngle = (90 - newDeg) * Math.PI / 180;
+  pullAngle = ((90 - newDeg) * Math.PI) / 180;
   updateAngleUI();
   draw();
 }

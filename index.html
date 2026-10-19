@@ -594,9 +594,11 @@ function endBarDrag(){barDrag=false;bar.classList.remove('dragging');}
 bar.addEventListener('pointerup',endBarDrag);bar.addEventListener('pointercancel',endBarDrag);
 function hideSubPanels(){wallAdjustMode=false;cursorAdjustMode=false;menuAdjustMode=false;adjustMode=false;adjust.style.display='none';cursorAdjust.style.display='none';menuAdjust.style.display='none';}
 function saveCurrentBarPosition(){
-  const r=bar.getBoundingClientRect();
-  const hasCustomTop = !!bar.style.top && bar.style.top !== 'auto';
-  panelSavedPosition = { left: r.left, top: r.top, hasCustomTop };
+  panelSavedPosition = {
+    top: bar.style.top,
+    left: bar.style.left,
+    bottom: bar.style.bottom
+  };
   panelMoved = false;
 }
 function restorePanelPosition(){
@@ -605,19 +607,10 @@ function restorePanelPosition(){
 }
 function markSettingsMove(){panelMoved=true;settingsPositionChanged=true;}
 function restoreAfterSettings(){
- if(!panelSavedPosition) return;
- if(panelMoved){
-   return;
- }
- if(panelSavedPosition.hasCustomTop){
-   bar.style.left = panelSavedPosition.left + 'px';
-   bar.style.top = panelSavedPosition.top + 'px';
-   bar.style.bottom = 'auto';
- } else {
-   bar.style.left = '';
-   bar.style.top = '';
-   bar.style.bottom = 'max(8px, env(safe-area-inset-bottom))';
- }
+ if(!panelSavedPosition || panelMoved) return;
+ bar.style.top = panelSavedPosition.top;
+ bar.style.left = panelSavedPosition.left;
+ bar.style.bottom = panelSavedPosition.bottom;
  applyBarTransform();
 }
 function liftBar(){}
@@ -647,12 +640,7 @@ function exitSettings(){
  settingsOpen=false;settingsSubOpen=false;
  document.body.classList.remove('settings-mode','settings-sub-mode');
  settingsPanel.classList.remove('open');settingsPanel.style.display='none';
- if(!panelMoved && (!panelSavedPosition || !panelSavedPosition.hasCustomTop)){
-   bar.style.top='';
-   bar.style.bottom='max(8px, env(safe-area-inset-bottom))';
- } else {
-   restoreAfterSettings();
- }
+ restoreAfterSettings();
 }
 settingsBtn.onclick=()=>{if(settingsOpen)exitSettings();else enterSettings();};
 settingsBack.onclick=exitSettings;

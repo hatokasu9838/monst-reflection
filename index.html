@@ -224,16 +224,15 @@ let active=null, lastX=0,lastY=0;
 let adjustMode=false;
 let savedBarPosition=null;
 let touchStartX=0,touchStartY=0;
-let topY=296, bottomY=1030;
-let leftX=54, rightX=1111;
+// --- 端末ごとの割り出し値をパーセンテージ（比率）で管理する全自動計算 ---
+let relLeft = 0.04615, relRight = 0.94957, relTop = 0.2050, relBottom = 0.6700;
 
 fileBtn.onclick=()=>file.click();
 empty.onclick=()=>{ if(stage.hidden) file.click(); };
 file.onchange=e=>{
  const f=e.target.files?.[0]; if(!f)return;
  const url=URL.createObjectURL(f);
- // Remember the most recently selected image for the ⚡︎ button.
-  photo.onload=()=>{
+ photo.onload=()=>{
    if(imgW>0 && imgH>0){
      window._cursorRelX=cursor.x/imgW;
      window._cursorRelY=cursor.y/imgH;
@@ -242,31 +241,35 @@ file.onchange=e=>{
    stage.hidden=false; empty.hidden=true;
    fitStage();
 
-   // 手動保存データがない場合、画像の機種（アスペクト比）に応じた壁判定を自動適用
-   if(!localStorage.getItem('monstWallSettings')){
-     const aspect = imgW / imgH;
+   // スクショ画像のアスペクト比（幅÷高さ）から端末を自動判別
+   const aspect = imgW / imgH;
 
-     if(aspect >= 0.65){ 
-       // 【iPad全般 (4:3)】
-       topY = 314.88;
-       bottomY = 1096.70;
-       leftX = Number((imgW * 0.1580).toFixed(2));
-       rightX = Number((imgW * 0.8420).toFixed(2));
-     } else if(aspect >= 0.52){ 
-       // 【iPhone SE / ホームボタン系 (16:9)】
-       topY = 325.63;
-       bottomY = 1089.02;
-       leftX = Number((imgW * 0.041034).toFixed(2));
-       rightX = Number((imgW * 0.967607).toFixed(2));
-     } else { 
-       // 【iPhone 14 / 全画面系 (19.5:9)】
-       topY = 314.88;
-       bottomY = 1029.10;
-       leftX = Number((imgW * 0.041034).toFixed(2));
-       rightX = Number((imgW * 0.967607).toFixed(2));
-     }
-     updateWallInputs();
+   if(aspect >= 0.65){ 
+     // 【iPad全般 (4:3)】 (上Y=149, 下Y=1115, 左X=212, 右X=1111)
+     relTop = 149 / 1600;
+     relBottom = 1115 / 1600;
+     relLeft = 212 / 1200;
+     relRight = 1111 / 1200;
+   } else if(aspect >= 0.52){ 
+     // 【iPhone SE / 8 / ホームボタン系 (16:9)】 (右X=721)
+     relTop = 325.63 / 1536;
+     relBottom = 1089.02 / 1536;
+     relLeft = 29 / 750;
+     relRight = 721 / 750;
+   } else { 
+     // 【iPhone 14 / 全画面系 (19.5:9)】 (左X=54, 右X=1111)
+     relTop = 314.88 / 1536;
+     relBottom = 1029.10 / 1536;
+     relLeft = 54 / 1170;
+     relRight = 1111 / 1170;
    }
+
+   // 手動入力UI側との互換性保持
+   topY = relTop * 1536;
+   bottomY = relBottom * 1536;
+   leftX = relLeft * imgW;
+   rightX = relRight * imgW;
+   updateWallInputs();
 
    const b=bounds();
    if(typeof window._cursorRelX==='number' && typeof window._cursorRelY==='number'){
@@ -289,17 +292,15 @@ function fitStage(){
  stage.style.height=Math.round(imgH*scale)+'px';
  cv.width=imgW; cv.height=imgH;
 }
-window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(gaugeOn)positionGauge();draw();}});
+window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(typeof gaugeOn!=='undefined'&&gaugeOn)positionGauge();draw();}});
 
-// Wall coordinates are independent X/Y values based on the iPhone 14 reference.
-// They are adjusted individually; changing one side does not preserve a ratio.
+// 四辺の壁座標を画像幅・高さに対する比率（%）で正確に算出
 function bounds(){
- const refH=1536;
  return {
-   l:Math.max(0,Math.min(imgW,leftX)),
-   r:Math.max(0,Math.min(imgW,rightX)),
-   t:Math.max(0,Math.min(imgH,(topY/refH)*imgH)),
-   b:Math.max(0,Math.min(imgH,(bottomY/refH)*imgH))
+   l: Math.max(0, Math.min(imgW, imgW * relLeft)),
+   r: Math.max(0, Math.min(imgW, imgW * relRight)),
+   t: Math.max(0, Math.min(imgH, imgH * relTop)),
+   b: Math.max(0, Math.min(imgH, imgH * relBottom))
  };
 }
 function draw(){

@@ -269,35 +269,49 @@ window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(gaugeOn)po
 // Wall coordinates are independent X/Y values based on the iPhone 14 reference.
 // They are adjusted individually; changing one side does not preserve a ratio.
 function bounds(){
- // 基準となるiPhone14の画面幅(1170px想定)に対する現在の画像のスケールを算出
- const baseW = 1170;
- const scaleX = imgW / baseW;
- 
- // 画像幅に応じた左右の壁の座標
- const calcL = leftX * scaleX;
- const calcR = rightX * scaleX;
- 
- // 画像のアスペクト比（縦/横）を算出
- const aspect = imgH / imgW;
- 
- // アスペクト比に応じたY座標の補正（基準はiPhone 14の比率）
- // ※iPad(約1.33)やiPhone SE(約1.77)、iPhone 14(約2.16)で余白の入り方が異なるため、
- // 現在の画像高さ(imgH)と、基準幅を元にした仮想的な高さの差分からオフセットを推定します。
- const baseH = 2532; // iPhone 14の想定解像度高さ
- const virtualH = baseW * aspect; 
- const scaleY = imgH / virtualH; // 実際の画像高さに対する比率
- 
- // ※まずはiPhone 14基準の比率を維持しつつ、Y座標もスケールを合わせます。
- // 端末ごとに大きくズレる場合は、ここからアスペクト比別のオフセット調整を追加します。
- const calcT = topY * (imgH / baseH);
- const calcB = bottomY * (imgH / baseH);
-
- return {
-   l: Math.max(0, Math.min(imgW, calcL)),
-   r: Math.max(0, Math.min(imgW, calcR)),
-   t: Math.max(0, Math.min(imgH, calcT)),
-   b: Math.max(0, Math.min(imgH, calcB))
- };
+  // 1. UIの数値をiPhone14 (1170x2532) の座標系として解釈し、絶対ピクセルを算出
+  const baseW = 1170;
+  const baseH = 2532;
+  const oldRefH = 1536; // 元コードのY座標スケール基準値
+  
+  const absL = leftX;
+  const absR = rightX;
+  const absT = (topY / oldRefH) * baseH;
+  const absB = (bottomY / oldRefH) * baseH;
+  
+  // 2. 盤面の「リアル長さの比率（アスペクト比）」と中心位置を確定
+  const boardW = absR - absL;
+  const boardH = absB - absT;
+  const aspect = boardH / boardW; // 全端末共通の縦横比 (約1.145)
+  
+  const centerXPct = (absL + absR) / 2 / baseW;
+  const centerYPct = (absT + absB) / 2 / baseH;
+  const widthPct = boardW / baseW;
+  
+  // 3. アスペクト比の限界値（iPad等の判定用）
+  // 基本解像度(750x1334)より画面が短い場合、UIを避けるため高さが制限される
+  const maxHeightPct = ((750 * widthPct) * aspect) / 1334;
+  
+  // 4. 読み込んだ画像に合わせて盤面サイズを仮計算（横幅基準）
+  let currentBoardW = imgW * widthPct;
+  let currentBoardH = currentBoardW * aspect;
+  
+  // 画面の高さが足りない場合（iPadなど）は、高さを限界値に固定し横幅を縮小
+  if (currentBoardH > imgH * maxHeightPct) {
+    currentBoardH = imgH * maxHeightPct;
+    currentBoardW = currentBoardH / aspect;
+  }
+  
+  // 5. 最終的な座標の決定（中心位置から上下左右に広げる）
+  const currentCenterX = imgW * centerXPct;
+  const currentCenterY = imgH * centerYPct;
+  
+  return {
+    l: Math.max(0, currentCenterX - currentBoardW / 2),
+    r: Math.min(imgW, currentCenterX + currentBoardW / 2),
+    t: Math.max(0, currentCenterY - currentBoardH / 2),
+    b: Math.min(imgH, currentCenterY + currentBoardH / 2)
+  };
 }
 function draw(){
  if(!imgW)return;

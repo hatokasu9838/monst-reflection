@@ -233,7 +233,7 @@ file.onchange=e=>{
  const f=e.target.files?.[0]; if(!f)return;
  const url=URL.createObjectURL(f);
  // Remember the most recently selected image for the ⚡︎ button.
-  photo.onload=()=>{
+   photo.onload=()=>{
    if(imgW>0 && imgH>0){
      window._cursorRelX=cursor.x/imgW;
      window._cursorRelY=cursor.y/imgH;
@@ -242,24 +242,24 @@ file.onchange=e=>{
    stage.hidden=false; empty.hidden=true;
    fitStage();
 
-   // ユーザーの保存設定がない場合、スクショの比率から全iPhone/iPadの壁判定をミリ単位で自動計算
+   // ユーザーの保存設定がない場合、スクショの比率から全iPhone/iPadの壁判定をミリ単位で自動計算（1536基準統一版）
    if(!localStorage.getItem('monstWallSettings')){
      const aspect = imgW / imgH;
 
      if(aspect >= 0.65){ 
-       // 【iPad全般 (Air / Pro / mini / 無印)】 左右の帯を考慮した精密比率
-       topY = Number((imgH * 0.2050).toFixed(2));
-       bottomY = Number((imgH * 0.6700).toFixed(2));
+       // 【iPad全般 (4:3)】 1536基準スケール値
+       topY = 314.88;
+       bottomY = 1096.70;
        leftX = Number((imgW * 0.1580).toFixed(2));
        rightX = Number((imgW * 0.8420).toFixed(2));
      } else if(aspect >= 0.52){ 
-       // 【ホームボタン付きiPhone全般 (SE1~3 / 6~8等)】
-       topY = Number((imgH * 0.1380).toFixed(2));
-       bottomY = Number((imgH * 0.7090).toFixed(2));
+       // 【ホームボタン付きiPhone全般 (SE1~3 / 6~8等 16:9)】 1536基準スケール値
+       topY = 325.63;
+       bottomY = 1089.02;
        leftX = Number((imgW * 0.041034).toFixed(2));
        rightX = Number((imgW * 0.967607).toFixed(2));
      } else { 
-       // 【全画面iPhone全般 (11~16 Pro/Max/Plus/mini/14等)】 実測比率（100%精密）
+       // 【全画面iPhone全般 (11~16 Pro/Max/Plus/mini/14等 19.5:9)】 1536基準スケール値
        topY = 314.88;
        bottomY = 1029.10;
        leftX = Number((imgW * 0.041034).toFixed(2));

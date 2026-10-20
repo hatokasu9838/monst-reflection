@@ -726,31 +726,12 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
  return voiceDataToBase64(bytes);
 }
 
-document.getElementById('voiceGenerate').addEventListener('click',()=>{
- try{
-  const deviceProfile=getVoiceDeviceProfile();
-  const lengthPx=deviceProfile.lengthPx;
-  const deviceScale=deviceProfile.deviceScale;
-  const customDurationValue=document.getElementById('voiceDuration').value.trim();
-  const durationMode=durationModeInputs.find(input=>input.checked)?.value||'rapid';
-  const durationSec=customDurationValue!==''?Number(customDurationValue):(durationMode==='gauge'?.5:.01);
-  const commandName=document.getElementById('voiceCommandName').value.trim()||'1';
-  let fileName=document.getElementById('voiceFileName').value.trim().replace(/[\\/:*?"<>|]/g,'-');
-  if(!Number.isFinite(durationSec)||durationSec<.01||durationSec>10)throw new Error('時間は0.01〜10秒の範囲で入力してください。');
-  if(!fileName)fileName=getDefaultVoiceFileName();
-  const gesture=makeVoiceGesture(lengthPx,durationSec,deviceScale);
-  const now=new Date();const iso=now.toISOString().replace(/\.\d{3}Z$/,'Z');
-  const appleDate=Date.now()/1000-978307200;
-  const id=`Custom.${Math.floor(Date.now()/1000)}.${Math.floor(Math.random()*900000+100000)}`;
-  const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>CommandsTable</key><dict><key>${id}</key><dict><key>ConfirmationRequired</key><false/><key>CustomCommands</key><dict><key>ja_JP</key><array><string>${voiceXmlEscape(commandName)}</string></array></dict><key>CustomGesture</key><data>${gesture}</data><key>CustomModifyDate</key><date>${iso}</date><key>CustomScope</key><string>com.apple.speech.SystemWideScope</string><key>CustomType</key><string>RunGesture</string></dict></dict><key>ExportDate</key><real>${appleDate}</real><key>SystemVersion</key><dict>${Object.entries(voiceSystemVersion).map(([k,v])=>`<key>${voiceXmlEscape(k)}</key><string>${voiceXmlEscape(v)}</string>`).join('')}</dict></dict></plist>`;
-  const blob=new Blob([xml],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fileName.toLowerCase().endsWith('.voicecontrolcommands')?fileName:fileName+'.voicecontrolcommands';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);voiceModal.classList.remove('open');
- }catch(err){alert(err.message||'ファイル生成に失敗しました。')}
-});
-// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理（角度軸修正版）
+// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理（角度のみ抽出・マイナス座標対応版）
 function convertGestureDuration(b64, durationSec, lengthPx, deviceScale){
   try{
     const raw = atob(b64.trim());
-    const matches = [...raw.matchAll(/\{([0-9.]+),\s*([0-9.]+)\}/g)];
+    // ▼ マイナス記号が含まれる座標も正確に抽出できるように修正
+    const matches = [...raw.matchAll(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/g)];
     if(!matches || matches.length < 2) return b64;
     
     // 実際のファイルデータから「始点」と「終点」を取得
@@ -762,9 +743,10 @@ function convertGestureDuration(b64, durationSec, lengthPx, deviceScale){
     const dx = endX - startX;
     const dy = endY - startY;
     
-    // ジェスチャ作成関数の内部計算（-Math.PI）と打ち消し合って100%同じ角度になるよう調整
+    // 移動量（dx, dy）から正確な角度を割り出し、新規生成時のパラメータに変換
     const extractedPullAngle = Math.atan2(dy, dx) + Math.PI;
 
+    // 抽出した角度だけを渡し、長さや真っ直ぐさは新規生成時と同じ最適なロジックを適用する
     return makeVoiceGesture(lengthPx, durationSec, deviceScale, extractedPullAngle);
   }catch(e){
     return b64;

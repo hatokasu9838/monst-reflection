@@ -699,16 +699,26 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
  const targetR=lengthPx*deviceScale;
  const minR=Math.max(10,Math.floor(targetR*0.7));
  const maxR=Math.floor(targetR*1.3);
- for(let R=minR;R<=maxR;R++){
-  const ix=Math.round(R*Math.cos(target));
-  const iy=Math.round(R*Math.sin(target));
-  const angle=Math.atan2(iy,ix);
-  const diff=Math.abs(Math.atan2(Math.sin(angle-target),Math.cos(angle-target)));
-  const lengthPenalty=Math.abs(R-targetR)/targetR;
-  const score=diff*10000+lengthPenalty*0.1;
-  const testX=x1+ix/deviceScale;
-  const testY=y1+iy/deviceScale;
+  for(let R=minR;R<=maxR;R++){
+  // ★ Math.round を完全に廃止し、正確な浮動小数点のまま計算
+  const exactX = R * Math.cos(target);
+  const exactY = R * Math.sin(target);
+  
+  const testX = x1 + exactX / deviceScale;
+  const testY = y1 + exactY / deviceScale;
+  
   let content=`{${testX.toFixed(5)}, ${testY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
+  
+  // 文字列化した後の座標から実際の角度を再計算し、誤差を極小化
+  const parsedX = parseFloat(testX.toFixed(5));
+  const parsedY = parseFloat(testY.toFixed(5));
+  const actualAngle = Math.atan2(parsedY - y1, parsedX - x1);
+  const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
+  
+  const lengthPenalty = Math.abs(R - targetR) / targetR;
+  // ★ 角度の完全一致を超最優先する
+  const score = diff * 10000000 + lengthPenalty * 0.1;
+  
   if(content.length<=voiceGesturePoints[2].length&&(!best||score<best.score)){
    best={x:testX,y:testY,content,score};
   }

@@ -692,51 +692,40 @@ function voiceDataToBase64(bytes){let bin='';for(let i=0;i<bytes.length;i+=0x800
 function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = pullAngle){
  const bytes=Uint8Array.from(atob(voiceGestureTemplateB64),c=>c.charCodeAt(0));
  const target=targetPullAngle-Math.PI;
- const baseX=voiceGesturePoints[0].x, baseY=voiceGesturePoints[0].y;
- 
- // 始点はAppleのテンプレート通りの正確な数値をそのまま使う
- const x1 = baseX;
- const y1 = baseY;
+ const x1=voiceGesturePoints[0].x, y1=voiceGesturePoints[0].y;
  
  let best=null;
- const targetR = lengthPx; // 基準の長さ（ポイント）
  
- // 理想の終点を算出
- const idealX = x1 + targetR * Math.cos(target);
- const idealY = y1 + targetR * Math.sin(target);
-
- // 理想の終点周辺を微小単位で総当たり探索し、「25文字以内に収まり、かつ角度誤差がゼロになる」数値を逆算
- const searchRange = 1.0; 
- const step = 0.005; 
+ // 長さを指定値の50%〜150%の間で微小変化させ、角度が最も正確になる座標を探す
+ const minR = lengthPx * 0.5;
+ const maxR = lengthPx * 1.5;
  
- for(let offsetX = -searchRange; offsetX <= searchRange; offsetX += step){
-  for(let offsetY = -searchRange; offsetY <= searchRange; offsetY += step){
-   const testX = idealX + offsetX;
-   const testY = idealY + offsetY;
-   
-   // 実際のファイルに書き込まれる文字列をシミュレート
-   let content=`{${testX.toFixed(5)}, ${testY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
-   
-   // 25文字（voiceGesturePoints[2].length）を超えたらiOSで読み込めないので除外
-   if(content.length > voiceGesturePoints[2].length) continue; 
-   
-   // 文字列化された数値から再計算し、iOS側の解釈と全く同じ条件で角度誤差を測る
-   const match = content.match(/{([^,]+),\s*([^}]+)}/);
-   if(!match) continue;
-   const px = parseFloat(match[1]);
-   const py = parseFloat(match[2]);
-   
-   const actualAngle = Math.atan2(py - y1, px - x1);
-   const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
-   const actualR = Math.hypot(px - x1, py - y1);
-   const lengthPenalty = Math.abs(actualR - targetR) / targetR;
-   
-   // 角度の完全一致を最優先（1億倍）
-   const score = diff * 100000000 + lengthPenalty;
-   
-   if(!best || score < best.score){
-    best = {x: px, y: py, content, score};
-   }
+ for(let r = minR; r <= maxR; r += 0.1){
+  const exactX = x1 + r * Math.cos(target);
+  const exactY = y1 + r * Math.sin(target);
+  
+  // Appleの形式に合わせて文字列化（不要な0を消す）
+  let content=`{${exactX.toFixed(5)}, ${exactY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
+  
+  // 文字数制限オーバーはスキップ
+  if(content.length > voiceGesturePoints[2].length) continue;
+  
+  // 実際に書き込まれる文字列から座標を再取得して角度をチェック
+  const match = content.match(/{([^,]+),\s*([^}]+)}/);
+  if(!match) continue;
+  const px = parseFloat(match[1]);
+  const py = parseFloat(match[2]);
+  
+  const actualAngle = Math.atan2(py - y1, px - x1);
+  const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
+  
+  // 長さのペナルティは排除し、角度の誤差の少なさ（diff）のみを評価する
+  const score = diff;
+  
+  if(!best || score < best.score){
+   best = {x: px, y: py, content, score};
+   // 誤差が完全に0ならこれ以上探す必要なし
+   if(score === 0) break;
   }
  }
  

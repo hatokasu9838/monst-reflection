@@ -499,10 +499,10 @@ function updateCount(){
 }
 const angleMinus=document.getElementById('angleMinus'), anglePlus=document.getElementById('anglePlus');
 function changeAngle(delta){
-  let currentDeg = (90 - pullAngle * 180 / Math.PI) % 360;
+  let currentDeg = (-pullAngle * 180 / Math.PI) % 360;
   if(currentDeg < 0) currentDeg += 360;
   let newDeg = (Math.round(currentDeg * 100) + delta * 100 + 36000) % 36000 / 100;
-  pullAngle = ((90 - newDeg) * Math.PI) / 180;
+  pullAngle = -newDeg * Math.PI / 180;
   updateAngleUI();
   draw();
 }
@@ -545,9 +545,10 @@ function saveGuideImage(){
   octx.drawImage(photo,0,0,imgW,imgH);
   octx.drawImage(cv,0,0,imgW,imgH);
 
-  // 保存画像では、現在の角度をカーソル中央（バッテンと円の中心）に記録する。
-  const angleDeg=((pullAngle*180/Math.PI)%360+360)%360;
-  const angleText=angleDeg.toFixed(2)+'°';
+    // 保存画像では、現在の角度をカーソル中央（バッテンと円の中心）に記録する。
+  let angleDeg = (-pullAngle * 180 / Math.PI) % 360;
+  if(angleDeg < 0) angleDeg += 360;
+  const angleText = angleDeg.toFixed(2) + '°';
   octx.save();
   octx.textAlign='center';
   octx.textBaseline='middle';
@@ -657,7 +658,9 @@ customDurationInput.addEventListener('input',()=>{
 });
 function getDefaultVoiceFileName(){
  const d=new Date();const pad=n=>String(n).padStart(2,'0');
- const angleText=(((pullAngle*180/Math.PI)%360+360)%360).toFixed(2).padStart(6,'0');
+ let deg = (-pullAngle * 180 / Math.PI) % 360;
+ if(deg < 0) deg += 360;
+ const angleText = deg.toFixed(2).padStart(6,'0');
  return `${angleText}°_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
 }
 document.getElementById('voiceFileName').value=getDefaultVoiceFileName();

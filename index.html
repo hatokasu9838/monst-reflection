@@ -272,9 +272,9 @@ function bounds(){
   // 1. マスター環境（iPhone 14想定）の解像度
   const baseW = 1170;
   const baseH = 2532;
-  const oldRefH = 1536; // 元コードのY座標スケール基準値
+  const oldRefH = 1536;
 
-  // 2. 完璧な数値（上299など）から、ベース環境での絶対座標と「中心位置」を算出
+  // 2. 完璧な数値から、ベース環境での絶対座標を算出
   const uL = leftX;
   const uR = rightX;
   const uT = (topY / oldRefH) * baseH;
@@ -283,30 +283,33 @@ function bounds(){
   const baseBoxW = uR - uL;
   const baseBoxH = uB - uT;
 
-  // 画面全体に対する、盤面の中心X・中心Yの割合（iPhone 14基準）
-  const cxPct = (uL + uR) / 2 / baseW;
-  const cyPct = (uT + uB) / 2 / baseH;
+  // ★ここが位置ズレ解消の鍵：「画面のど真ん中」からどれだけズレているかを計算
+  const baseCenterX = (uL + uR) / 2;
+  const baseCenterY = (uT + uB) / 2;
+  const offsetX = (baseW / 2) - baseCenterX; // 中心からのXズレ
+  const offsetY = (baseH / 2) - baseCenterY; // 中心からのYズレ（上にズレている分）
 
   // 3. 読み込んだ画像のアスペクト比判定（16:9を基準とする）
-  const thresholdAspect = 16 / 9; // 約1.777
+  const thresholdAspect = 16 / 9;
   const imgAspect = imgH / imgW;
 
   let scale;
   if (imgAspect >= thresholdAspect) {
-    // 縦長スマホ (iPhone 14, SEなど): 画面の「横幅」に合わせてスケール
+    // 縦長スマホ (iPhone 14, SEなど)
     scale = imgW / baseW;
   } else {
-    // 横広タブレット (iPadなど): 16:9の限界「高さ」に合わせてスケール（左右に余白ができる）
+    // 横広タブレット (iPadなど)
     const virtualW = imgH / thresholdAspect;
     scale = virtualW / baseW;
   }
 
-  // 4. 最終的な盤面のサイズと、中心位置からの座標計算
+  // 4. 最終的な盤面のサイズ（ここは前回と同じ完璧なサイズ）
   const currentW = baseBoxW * scale;
   const currentH = baseBoxH * scale;
-  
-  const currentCX = imgW * cxPct;
-  const currentCY = imgH * cyPct;
+
+  // 5. 各端末の「画面のど真ん中」を基準に、スケールされたズレ分を適用して配置
+  const currentCX = (imgW / 2) - (offsetX * scale);
+  const currentCY = (imgH / 2) - (offsetY * scale);
 
   return {
     l: Math.max(0, currentCX - currentW / 2),

@@ -146,7 +146,7 @@ input{ -webkit-touch-callout:none; }
   <button id="settingsSubBack" type="button" aria-label="サイズ変更メニューに戻る">◁</button>
   <div id="angleControls"><button id="angleMinus">−</button><span id="angleDisplay"><span>角度</span><span class="angleValue">000.00°</span></span><button id="anglePlus">＋</button></div>
   <div id="adjust">
-    <div class="wallControlRow"><b>上 Y</b><button id="wallTopMinus">−</button><input id="wallTopValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="296" aria-label="上Y座標"><button id="wallTopPlus">＋</button></div>
+    <div class="wallControlRow"><b>上 Y</b><button id="wallTopMinus">−</button><input id="wallTopValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="299" aria-label="上Y座標"><button id="wallTopPlus">＋</button></div>
     <div class="wallControlRow"><b>下 Y</b><button id="wallBottomMinus">−</button><input id="wallBottomValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="1030" aria-label="下Y座標"><button id="wallBottomPlus">＋</button></div>
     <div class="wallControlRow"><b>左 X</b><button id="wallLeftMinus">−</button><input id="wallLeftValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="54" aria-label="左X座標"><button id="wallLeftPlus">＋</button></div>
     <div class="wallControlRow"><b>右 X</b><button id="wallRightMinus">−</button><input id="wallRightValue" class="wallValue" type="text" inputmode="numeric" pattern="[0-9]*" value="1111" aria-label="右X座標"><button id="wallRightPlus">＋</button></div>
@@ -224,7 +224,7 @@ let active=null, lastX=0,lastY=0;
 let adjustMode=false;
 let savedBarPosition=null;
 let touchStartX=0,touchStartY=0;
-let topY=296, bottomY=1030;
+let topY=299, bottomY=1030;
 let leftX=54, rightX=1111;
 
 fileBtn.onclick=()=>file.click();
@@ -783,7 +783,7 @@ function bindWallInput(input,which){
 }
 bindWallInput(wallInputs.top,'top'); bindWallInput(wallInputs.bottom,'bottom');
 bindWallInput(wallInputs.left,'left'); bindWallInput(wallInputs.right,'right');
-document.getElementById('wallReset').onclick=()=>{topY=296;bottomY=1030;leftX=54;rightX=1111;updateWallInputs();draw();};
+document.getElementById('wallReset').onclick=()=>{topY=299;bottomY=1030;leftX=54;rightX=1111;updateWallInputs();draw();};
 document.getElementById('wallSave').onclick=saveWallSettings;
 document.getElementById('wallRestore').onclick=restoreWallSettings;
 restoreWallSettings();

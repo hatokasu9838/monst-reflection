@@ -696,11 +696,13 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
  
  let best=null;
  
- // 長さを指定値の50%〜150%の間で微小変化させ、角度が最も正確になる座標を探す
- const minR = lengthPx * 0.5;
- const maxR = lengthPx * 1.5;
+ // 長さの指定を無視し、画面端で切れない安全な長距離（150〜350）の中で
+ // 最も角度が完璧になるポイントを探索する
+ const minR = 150;
+ const maxR = 350; // 一般的なスマホ画面ではみ出さない程度の最大長
  
- for(let r = minR; r <= maxR; r += 0.1){
+ // 長い方が精度が高いため、長い方から逆順に探す
+ for(let r = maxR; r >= minR; r -= 0.05){
   const exactX = x1 + r * Math.cos(target);
   const exactY = y1 + r * Math.sin(target);
   
@@ -719,13 +721,10 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
   const actualAngle = Math.atan2(py - y1, px - x1);
   const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
   
-  // 長さのペナルティは排除し、角度の誤差の少なさ（diff）のみを評価する
-  const score = diff;
-  
-  if(!best || score < best.score){
-   best = {x: px, y: py, content, score};
-   // 誤差が完全に0ならこれ以上探す必要なし
-   if(score === 0) break;
+  if(!best || diff < best.score){
+   best = {x: px, y: py, content, score: diff};
+   // 誤差が完全に0（JavaScriptの計算限界レベル）なら即採用
+   if(diff < 0.0000001) break; 
   }
  }
  

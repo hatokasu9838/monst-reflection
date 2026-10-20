@@ -663,7 +663,7 @@ function getDefaultVoiceFileName(){
  const durationMode = [...document.querySelectorAll('input[name="voiceDurationMode"]')].find(input=>input.checked)?.value||'rapid';
  let modeText = '';
  if(customDurationValue !== ''){
-   modeText = `入力${customDurationValue}秒`;
+   modeText = `${customDurationValue}秒`;
  }else if(durationMode === 'gauge'){
    modeText = 'ゲージ';
  }else if(durationMode === 'rapid'){

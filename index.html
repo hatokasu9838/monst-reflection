@@ -546,8 +546,9 @@ function saveGuideImage(){
   octx.drawImage(cv,0,0,imgW,imgH);
 
   // 保存画像では、現在の角度をカーソル中央（バッテンと円の中心）に記録する。
-  const angleDeg=((pullAngle*180/Math.PI)%360+360)%360;
-  const angleText=angleDeg.toFixed(2)+'°';
+  let angleDeg = (-pullAngle * 180 / Math.PI) % 360;
+  if(angleDeg < 0) angleDeg += 360;
+  const angleText = angleDeg.toFixed(2) + '°';
   octx.save();
   octx.textAlign='center';
   octx.textBaseline='middle';
@@ -657,7 +658,9 @@ customDurationInput.addEventListener('input',()=>{
 });
 function getDefaultVoiceFileName(){
  const d=new Date();const pad=n=>String(n).padStart(2,'0');
- const angleText=(((pullAngle*180/Math.PI)%360+360)%360).toFixed(2).padStart(6,'0');
+ let deg = (-pullAngle * 180 / Math.PI) % 360;
+ if(deg < 0) deg += 360;
+ const angleText = deg.toFixed(2).padStart(6,'0');
  return `${angleText}°_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
 }
 document.getElementById('voiceFileName').value=getDefaultVoiceFileName();

@@ -679,11 +679,15 @@ document.getElementById('voiceCancel').addEventListener('click',()=>voiceModal.c
 voiceModal.addEventListener('click',e=>{if(e.target===voiceModal)voiceModal.classList.remove('open')});
 function voiceXmlEscape(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
 function voiceDataToBase64(bytes){let bin='';for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));return btoa(bin)}
-// 1. ジェスチャ生成関数（任意の角度に対応できるよう拡張）
+// ==========================================
+// 音声コントロール用 ジェスチャ生成・変換ロジック
+// ==========================================
+
+// 1. 新規ジェスチャ生成（綺麗な直線を描画）
 function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = pullAngle){
  const bytes=Uint8Array.from(atob(voiceGestureTemplateB64),c=>c.charCodeAt(0));
  const target=targetPullAngle-Math.PI;
- const baseX=voiceGesturePoints[0].x,baseY=voiceGesturePoints[0].y;
+ const baseX=voiceGesturePoints[0].x, baseY=voiceGesturePoints[0].y;
  const x1=Math.round(baseX*deviceScale)/deviceScale;
  const y1=Math.round(baseY*deviceScale)/deviceScale;
  let best=null;
@@ -719,149 +723,117 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
   const padded=content.slice(0,-1)+' '.repeat(p.length-content.length)+'}';
   bytes.set(new TextEncoder().encode(padded),p.offset);
  });
- const t0=voiceGestureTimes[0].value,tLast=voiceGestureTimes[voiceGestureTimes.length-1].value;
+ const t0=voiceGestureTimes[0].value, tLast=voiceGestureTimes[voiceGestureTimes.length-1].value;
  const factor=durationSec/Math.max(.001,tLast-t0);
  const view=new DataView(bytes.buffer);
  voiceGestureTimes.forEach(t=>view.setFloat64(t.offset,t0+(t.value-t0)*factor,false));
  return voiceDataToBase64(bytes);
 }
-// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理（完全解析版）
+
+// 2. Apple純正 手書きバイナリデータの完全解析エンジン
 function extractAngleFromBplist(b64) {
     try {
         const buf = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
         const view = new DataView(buf.buffer);
         if (String.fromCharCode(...buf.subarray(0, 8)) !== 'bplist00') return null;
+
         const trailer = buf.length - 32;
         const offsetSize = buf[trailer + 6];
         const refSize = buf[trailer + 7];
         const numObjects = Number(view.getBigUint64(trailer + 8));
         const offsetTableOffset = Number(view.getBigUint64(trailer + 24));
-        const getRef = (offset, size) => size === 1 ? buf[offset] : size === 2 ? view.getUint16(offset) : view.getUint32(offset);
+
+        const getInt = (offset, size) => {
+            let val = 0;
+            for (let i = 0; i < size; i++) val = (val << 8) | buf[offset + i];
+            return val;
+        };
+
         const objects = [];
         for (let i = 0; i < numObjects; i++) {
-            const off = offsetTableOffset + i * offsetSize;
-            const objOff = getRef(off, offsetSize);
+            const objOff = getInt(offsetTableOffset + i * offsetSize, offsetSize);
             const marker = buf[objOff];
             const type = marker & 0xF0;
-            if (type === 0x50) {
-                let len = marker & 0x0F;
-                let dataOff = objOff + 1;
-                if (len === 15) {
-                    const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
-                    dataOff++;
-                    len = getRef(dataOff, intBytes);
-                    dataOff += intBytes;
-                }
-                objects.push(String.fromCharCode(...buf.subarray(dataOff, dataOff + len)));
-            } else if (type === 0xA0) {
-                let len = marker & 0x0F;
-                let dataOff = objOff + 1;
-                if (len === 15) {
-                    const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
-                    dataOff++;
-                    len = getRef(dataOff, intBytes);
-                    dataOff += intBytes;
-                }
-                const arr = [];
-                for (let j = 0; j < len; j++) arr.push(getRef(dataOff + j * refSize, refSize));
-                objects.push({ isArray: true, refs: arr });
-            } else if (type === 0xD0) {
-                let len = marker & 0x0F;
-                let dataOff = objOff + 1;
-                if (len === 15) {
-                    const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
-                    dataOff++;
-                    len = getRef(dataOff, intBytes);
-                    dataOff += intBytes;
-                }
+            const lenNibble = marker & 0x0F;
+
+            let dataOff = objOff + 1;
+            let len = lenNibble;
+            if (len === 15) {
+                const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
+                dataOff++;
+                len = getInt(dataOff, intBytes);
+                dataOff += intBytes;
+            }
+
+            if (type === 0x50) objects.push(String.fromCharCode(...buf.subarray(dataOff, dataOff + len)));
+            else if (type === 0x60) {
+                let str = '';
+                for(let j = 0; j < len; j++) str += String.fromCharCode(view.getUint16(dataOff + j * 2));
+                objects.push(str);
+            }
+            else if (type === 0xD0) {
                 const dict = {};
                 for (let j = 0; j < len; j++) {
-                    const keyRef = getRef(dataOff + j * refSize, refSize);
-                    const valRef = getRef(dataOff + len * refSize + j * refSize, refSize);
-                    dict[keyRef] = valRef;
+                    dict[getInt(dataOff + j * refSize, refSize)] = getInt(dataOff + len * refSize + j * refSize, refSize);
                 }
                 objects.push({ isDict: true, dict });
-            } else {
-                objects.push(null);
-            }
+            } 
+            else if (type === 0x80) objects.push({ isUID: true, val: getInt(dataOff, len + 1) });
+            else if (type === 0x20) objects.push(lenNibble === 2 ? view.getFloat32(dataOff) : view.getFloat64(dataOff));
+            else if (type === 0x10) objects.push(getInt(dataOff, Math.pow(2, lenNibble)));
+            else objects.push(null);
         }
-        if (!objects[1] || !objects[1].isArray) return null;
-        const sysObjects = objects[1].refs.map(ref => objects[ref]);
-        let eventsArrayRef = null;
-        for (let i = 0; i < sysObjects.length; i++) {
-            const obj = sysObjects[i];
+
+        const resolve = (ref) => objects[ref]?.isUID ? objects[objects[ref].val] : objects[ref];
+
+        const events = [];
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
             if (obj && obj.isDict) {
-                for (const keyRef in obj.dict) {
-                    if (sysObjects[keyRef] === 'events') {
-                        eventsArrayRef = obj.dict[keyRef];
-                        break;
-                    }
+                let pointStr = null, timeVal = null;
+                for (const k in obj.dict) {
+                    const keyObj = resolve(k);
+                    if (keyObj === 'NS.pointval') pointStr = resolve(obj.dict[k]);
+                    else if (keyObj === 'Time') timeVal = resolve(obj.dict[k]);
+                }
+                if (typeof pointStr === 'string' && typeof timeVal === 'number') {
+                    const m = pointStr.match(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/);
+                    if (m) events.push({ time: timeVal, x: parseFloat(m[1]), y: parseFloat(m[2]) });
                 }
             }
-            if (eventsArrayRef !== null) break;
         }
-        if (eventsArrayRef !== null) {
-            const eventsArr = sysObjects[eventsArrayRef];
-            if (eventsArr && eventsArr.isArray) {
-                const points = [];
-                for (const eventRef of eventsArr.refs) {
-                    const eventDict = sysObjects[eventRef];
-                    if (eventDict && eventDict.isDict) {
-                        for (const keyRef in eventDict.dict) {
-                            if (sysObjects[keyRef] === 'NS.pointval') {
-                                const pointStr = sysObjects[eventDict.dict[keyRef]];
-                                if (typeof pointStr === 'string') {
-                                    const m = pointStr.match(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/);
-                                    if (m) points.push({x: parseFloat(m[1]), y: parseFloat(m[2])});
-                                }
-                            }
-                        }
-                    }
-                }
-                if (points.length >= 2) {
-                    const dx = points[points.length - 1].x - points[0].x;
-                    const dy = points[points.length - 1].y - points[0].y;
-                    return Math.atan2(dy, dx) + Math.PI;
-                }
-            }
+
+        if (events.length >= 2) {
+            events.sort((a, b) => a.time - b.time);
+            return Math.atan2(events[events.length - 1].y - events[0].y, events[events.length - 1].x - events[0].x) + Math.PI;
         }
     } catch(e) {}
     return null;
 }
 
+// 3. 既存コマンドの変換マネージャー
 function convertGestureDuration(b64, durationSec, lengthPx, deviceScale, angleFromName = null){
-  // 1. コマンド名から抽出した角度があればそれを最優先で適用
-  if (angleFromName !== null && !isNaN(angleFromName)) {
-    return makeVoiceGesture(lengthPx, durationSec, deviceScale, angleFromName);
-  }
+  if (angleFromName !== null && !isNaN(angleFromName)) return makeVoiceGesture(lengthPx, durationSec, deviceScale, angleFromName);
   
-  // 2. iOSの内部バイナリ構造を解読して時系列順の角度を算出
   const bplistAngle = extractAngleFromBplist(b64);
-  if (bplistAngle !== null) {
-    return makeVoiceGesture(lengthPx, durationSec, deviceScale, bplistAngle);
-  }
+  if (bplistAngle !== null) return makeVoiceGesture(lengthPx, durationSec, deviceScale, bplistAngle);
 
-  // 3. それでもダメな場合の最終フォールバック
-  try{
+  try {
     const raw = atob(b64.trim());
     const matches = [...raw.matchAll(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/g)];
-    if(!matches || matches.length < 2) return b64;
-    const startX = parseFloat(matches[0][1]);
-    const startY = parseFloat(matches[0][2]);
-    const endX = parseFloat(matches[matches.length - 1][1]);
-    const endY = parseFloat(matches[matches.length - 1][2]);
-    return makeVoiceGesture(lengthPx, durationSec, deviceScale, Math.atan2(endY - startY, endX - startX) + Math.PI);
-  }catch(e){
-    return b64;
-  }
+    if(matches.length >= 2) {
+        return makeVoiceGesture(lengthPx, durationSec, deviceScale, Math.atan2(parseFloat(matches[matches.length - 1][2]) - parseFloat(matches[0][2]), parseFloat(matches[matches.length - 1][1]) - parseFloat(matches[0][1])) + Math.PI);
+    }
+  } catch(e) {}
+  return b64;
 }
 
-// 3. ファイル選択イベント処理
+// 4. ファイル選択・ダウンロード処理
 const voiceConvertBtn = document.getElementById('voiceConvertBtn');
 const voiceConvertFile = document.getElementById('voiceConvertFile');
 
 if(voiceConvertBtn && voiceConvertFile){
-  voiceConvertBtn.addEventListener('click', ()=>{
+  voiceConvertBtn.addEventListener('click', () => {
     voiceConvertFile.value = '';
     voiceConvertFile.click();
   });
@@ -871,9 +843,6 @@ if(voiceConvertBtn && voiceConvertFile){
     if(!file) return;
 
     const deviceProfile = getVoiceDeviceProfile();
-    const lengthPx = deviceProfile.lengthPx;
-    const deviceScale = deviceProfile.deviceScale;
-
     const customDurationValue = document.getElementById('voiceDuration').value.trim();
     const durationMode = durationModeInputs.find(input => input.checked)?.value || 'rapid';
     const durationSec = customDurationValue !== '' ? Number(customDurationValue) : (durationMode === 'gauge' ? 0.5 : 0.01);
@@ -883,37 +852,24 @@ if(voiceConvertBtn && voiceConvertFile){
       return;
     }
 
-    let suffix = '_converted';
-    if(customDurationValue !== ''){
-      suffix = `_${durationSec}s`;
-    }else if(durationMode === 'gauge'){
-      suffix = '_ゲージ';
-    }else if(durationMode === 'rapid'){
-      suffix = '_速射';
-    }
+    let suffix = customDurationValue !== '' ? `_${durationSec}s` : (durationMode === 'gauge' ? '_ゲージ' : '_速射');
 
     const reader = new FileReader();
     reader.onload = evt => {
-      try{
-        const xmlText = evt.target.result;
+      try {
         let currentCommandName = '';
-        
-        // ファイル内の読み上げコマンド名とジェスチャデータの両方を同時に解析して変換
-        const convertedXml = xmlText.replace(/<key>ja_JP<\/key>\s*<array>\s*<string>(.*?)<\/string>|(<key>CustomGesture<\/key>\s*<data>([\s\S]*?)<\/data>)/g, (match, name, gestureGroup, b64) => {
+        const convertedXml = evt.target.result.replace(/<key>ja_JP<\/key>\s*<array>\s*<string>(.*?)<\/string>|(<key>CustomGesture<\/key>\s*<data>([\s\S]*?)<\/data>)/g, (match, name, gestureGroup, b64) => {
             if (name !== undefined) {
-                currentCommandName = name; // コマンド名を記憶
+                currentCommandName = name;
                 return match;
             }
             if (b64 !== undefined) {
                 let angleFromName = null;
-                // 記憶したコマンド名から角度（例: 49.31）を抽出
                 const angleMatch = currentCommandName.match(/([0-9]{1,3}\.[0-9]{1,2})/);
-                if (angleMatch) {
-                    angleFromName = -parseFloat(angleMatch[1]) * Math.PI / 180;
-                }
+                if (angleMatch) angleFromName = -parseFloat(angleMatch[1]) * Math.PI / 180;
                 
-                const newB64 = convertGestureDuration(b64, durationSec, lengthPx, deviceScale, angleFromName);
-                currentCommandName = ''; // 次のコマンド用にリセット
+                const newB64 = convertGestureDuration(b64, durationSec, deviceProfile.lengthPx, deviceProfile.deviceScale, angleFromName);
+                currentCommandName = '';
                 return `<key>CustomGesture</key><data>${newB64}</data>`;
             }
             return match;
@@ -923,14 +879,13 @@ if(voiceConvertBtn && voiceConvertFile){
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const originalName = file.name.replace(/\.voicecontrolcommands$/i, '');
-        a.download = `${originalName}${suffix}.voicecontrolcommands`;
+        a.download = `${file.name.replace(/\.voicecontrolcommands$/i, '')}${suffix}.voicecontrolcommands`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 2000);
         voiceModal.classList.remove('open');
-      }catch(err){
+      } catch(err) {
         alert('ファイルの変換に失敗しました。ファイル形式をご確認ください。');
       }
     };

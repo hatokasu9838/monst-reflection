@@ -827,7 +827,7 @@ function convertGestureDuration(b64, durationSec, lengthPx, deviceScale, angleFr
   } catch(e) {}
   return b64;
 }
-// 4. ファイル選択・解析テスト処理（変換せず、語句と角度を抽出して表示する機能）
+// 4. ファイル選択・純粋なデータ解析テスト処理（名前からの推測を完全排除）
 const voiceConvertBtn = document.getElementById('voiceConvertBtn');
 const voiceConvertFile = document.getElementById('voiceConvertFile');
 
@@ -845,15 +845,13 @@ if(voiceConvertBtn && voiceConvertFile){
     reader.onload = evt => {
       try {
         const xmlText = evt.target.result;
-        
-        // XMLとして正確にパースしてデータを抽出
         const doc = new DOMParser().parseFromString(xmlText, "application/xml");
         const keys = doc.getElementsByTagName('key');
         let results = [];
         
         for(let i = 0; i < keys.length; i++){
            if(keys[i].textContent === 'ja_JP'){
-              // 語句（コマンド名）の取得
+              // 語句（コマンド名）の取得（※結果の表示用としてのみ使用）
               let commandName = "不明";
               let nextNode = keys[i].nextElementSibling;
               if(nextNode && nextNode.tagName === 'array'){
@@ -861,11 +859,10 @@ if(voiceConvertBtn && voiceConvertFile){
                   if(strNode) commandName = strNode.textContent;
               }
               
-              // 同じコマンドグループ内のCustomGesture（バイナリ）を探す
-              let parentDict = keys[i].parentElement; // CustomCommands dict
-              let commandDict = parentDict.parentElement; // コマンド全体の dict
-              
+              let parentDict = keys[i].parentElement;
+              let commandDict = parentDict.parentElement;
               let gestureB64 = null;
+              
               let commandDictKeys = commandDict.children;
               for(let j = 0; j < commandDictKeys.length; j++){
                   if(commandDictKeys[j].tagName === 'key' && commandDictKeys[j].textContent === 'CustomGesture'){
@@ -877,10 +874,10 @@ if(voiceConvertBtn && voiceConvertFile){
               }
               
               if(gestureB64){
-                  // 1. Apple純正バイナリ解析エンジンで角度(ラジアン)を抽出
+                  // ★ 名前からの推測を一切行わず、純粋に内部のバイナリデータのみを解析する
                   let extractedRadian = extractAngleFromBplist(gestureB64);
                   
-                  // 2. ダメなら旧式の正規表現で抽出
+                  // bplist構造を持たない旧形式ファイル等の場合の予備解析
                   if(extractedRadian === null){
                       const raw = atob(gestureB64.trim());
                       const matches = [...raw.matchAll(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/g)];
@@ -892,7 +889,6 @@ if(voiceConvertBtn && voiceConvertFile){
                       }
                   }
                   
-                  // 抽出したラジアンを、画面UIと同じ「360度表記（反時計回り）」に変換
                   let angleDegText = "解析不能";
                   if(extractedRadian !== null){
                       let deg = (-extractedRadian * 180 / Math.PI) % 360;
@@ -900,17 +896,15 @@ if(voiceConvertBtn && voiceConvertFile){
                       angleDegText = deg.toFixed(2) + "°";
                   }
                   
-                  // 結果をリストに追加
-                  results.push(`[語句: ${commandName}] 判定角度: ${angleDegText}`);
+                  results.push(`[語句: ${commandName}] 内部データ解析角度: ${angleDegText}`);
               }
            }
         }
         
-        // モーダルを閉じてアラートで結果を表示
         voiceModal.classList.remove('open');
         
         if(results.length > 0){
-            alert("【ファイル解析結果】\n\n" + results.join("\n"));
+            alert("【純粋なデータ解析テスト結果】\n\n" + results.join("\n"));
         } else {
             alert("コマンドが見つかりませんでした。");
         }

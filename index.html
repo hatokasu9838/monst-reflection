@@ -680,10 +680,10 @@ voiceModal.addEventListener('click',e=>{if(e.target===voiceModal)voiceModal.clas
 function voiceXmlEscape(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
 function voiceDataToBase64(bytes){let bin='';for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));return btoa(bin)}
 // ==========================================
-// 音声コントロール用 ジェスチャ生成・変換ロジック
+// 音声コントロール用 ジェスチャ生成・変換ロジック (検証テスト版)
 // ==========================================
 
-// 1. 新規ジェスチャ生成（綺麗な直線を描画）
+// 1. 新規ジェスチャ生成（★ピクセル丸めを廃止し、0.01°の狂いも許さない完全一致版）
 function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = pullAngle){
  const bytes=Uint8Array.from(atob(voiceGestureTemplateB64),c=>c.charCodeAt(0));
  const target=targetPullAngle-Math.PI;
@@ -695,17 +695,24 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
  const minR=Math.max(10,Math.floor(targetR*0.7));
  const maxR=Math.floor(targetR*1.3);
  for(let R=minR;R<=maxR;R++){
-  const ix=Math.round(R*Math.cos(target));
-  const iy=Math.round(R*Math.sin(target));
-  const angle=Math.atan2(iy,ix);
-  const diff=Math.abs(Math.atan2(Math.sin(angle-target),Math.cos(angle-target)));
-  const lengthPenalty=Math.abs(R-targetR)/targetR;
-  const score=diff*10000+lengthPenalty*0.1;
-  const testX=x1+ix/deviceScale;
-  const testY=y1+iy/deviceScale;
-  let content=`{${testX.toFixed(5)}, ${testY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
-  if(content.length<=voiceGesturePoints[2].length&&(!best||score<best.score)){
-   best={x:testX,y:testY,content,score};
+  // 丸め処理（Math.round）を排除し、数学的に正確な浮動小数点座標をそのまま使う
+  const exactX = x1 + (R * Math.cos(target)) / deviceScale;
+  const exactY = y1 + (R * Math.sin(target)) / deviceScale;
+  
+  let content=`{${exactX.toFixed(5)}, ${exactY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
+  
+  // 文字列化した後の座標から実際の角度を再計算し、指定角度との誤差をチェック
+  const parsedX = parseFloat(exactX.toFixed(5));
+  const parsedY = parseFloat(exactY.toFixed(5));
+  const actualAngle = Math.atan2(parsedY - y1, parsedX - x1);
+  const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
+  
+  const lengthPenalty = Math.abs(R - targetR) / targetR;
+  // 角度の完全一致を超最優先する（diffへのペナルティを極大化）
+  const score = diff * 10000000 + lengthPenalty * 0.1;
+  
+  if(content.length <= voiceGesturePoints[2].length && (!best || score < best.score)){
+   best={x: parsedX, y: parsedY, content, score};
   }
  }
  if(!best)throw new Error('指定角度に近い座標を生成できません');
@@ -811,23 +818,7 @@ function extractAngleFromBplist(b64) {
     return null;
 }
 
-// 3. 既存コマンドの変換マネージャー
-function convertGestureDuration(b64, durationSec, lengthPx, deviceScale, angleFromName = null){
-  if (angleFromName !== null && !isNaN(angleFromName)) return makeVoiceGesture(lengthPx, durationSec, deviceScale, angleFromName);
-  
-  const bplistAngle = extractAngleFromBplist(b64);
-  if (bplistAngle !== null) return makeVoiceGesture(lengthPx, durationSec, deviceScale, bplistAngle);
-
-  try {
-    const raw = atob(b64.trim());
-    const matches = [...raw.matchAll(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/g)];
-    if(matches.length >= 2) {
-        return makeVoiceGesture(lengthPx, durationSec, deviceScale, Math.atan2(parseFloat(matches[matches.length - 1][2]) - parseFloat(matches[0][2]), parseFloat(matches[matches.length - 1][1]) - parseFloat(matches[0][1])) + Math.PI);
-    }
-  } catch(e) {}
-  return b64;
-}
-// 4. ファイル選択・純粋なデータ解析テスト処理（名前からの推測を完全排除）
+// 3. ファイル選択・生成精度検証テスト（生成前後の角度を比較表示）
 const voiceConvertBtn = document.getElementById('voiceConvertBtn');
 const voiceConvertFile = document.getElementById('voiceConvertFile');
 
@@ -841,6 +832,11 @@ if(voiceConvertBtn && voiceConvertFile){
     const file = e.target.files?.[0];
     if(!file) return;
 
+    const deviceProfile = getVoiceDeviceProfile();
+    const lengthPx = deviceProfile.lengthPx;
+    const deviceScale = deviceProfile.deviceScale;
+    const durationSec = 0.01; // テスト用なので適当な値
+
     const reader = new FileReader();
     reader.onload = evt => {
       try {
@@ -851,7 +847,6 @@ if(voiceConvertBtn && voiceConvertFile){
         
         for(let i = 0; i < keys.length; i++){
            if(keys[i].textContent === 'ja_JP'){
-              // 語句（コマンド名）の取得（※結果の表示用としてのみ使用）
               let commandName = "不明";
               let nextNode = keys[i].nextElementSibling;
               if(nextNode && nextNode.tagName === 'array'){
@@ -859,44 +854,54 @@ if(voiceConvertBtn && voiceConvertFile){
                   if(strNode) commandName = strNode.textContent;
               }
               
-              let parentDict = keys[i].parentElement;
-              let commandDict = parentDict.parentElement;
+              let commandDict = keys[i].parentElement.parentElement;
+              let dataNode = null;
               let gestureB64 = null;
               
               let commandDictKeys = commandDict.children;
               for(let j = 0; j < commandDictKeys.length; j++){
                   if(commandDictKeys[j].tagName === 'key' && commandDictKeys[j].textContent === 'CustomGesture'){
-                      let dataNode = commandDictKeys[j].nextElementSibling;
+                      dataNode = commandDictKeys[j].nextElementSibling;
                       if(dataNode && dataNode.tagName === 'data'){
                           gestureB64 = dataNode.textContent;
                       }
                   }
               }
               
-              if(gestureB64){
-                  // ★ 名前からの推測を一切行わず、純粋に内部のバイナリデータのみを解析する
-                  let extractedRadian = extractAngleFromBplist(gestureB64);
+              if(gestureB64 && dataNode){
+                  // 1. 元ファイルから角度を抽出 (originalAngle)
+                  let targetAngleRadian = extractAngleFromBplist(gestureB64);
                   
-                  // bplist構造を持たない旧形式ファイル等の場合の予備解析
-                  if(extractedRadian === null){
+                  if(targetAngleRadian === null){
                       const raw = atob(gestureB64.trim());
                       const matches = [...raw.matchAll(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/g)];
                       if(matches.length >= 2) {
-                          extractedRadian = Math.atan2(
+                          targetAngleRadian = Math.atan2(
                               parseFloat(matches[matches.length - 1][2]) - parseFloat(matches[0][2]), 
                               parseFloat(matches[matches.length - 1][1]) - parseFloat(matches[0][1])
                           ) + Math.PI;
                       }
                   }
                   
-                  let angleDegText = "解析不能";
-                  if(extractedRadian !== null){
-                      let deg = (-extractedRadian * 180 / Math.PI) % 360;
-                      if(deg < 0) deg += 360;
-                      angleDegText = deg.toFixed(2) + "°";
+                  if(targetAngleRadian !== null){
+                      // 表示用に度数法へ変換
+                      let degOriginal = (-targetAngleRadian * 180 / Math.PI) % 360;
+                      if(degOriginal < 0) degOriginal += 360;
+                      
+                      // 2. 抽出した角度を元に、新しいジェスチャを生成
+                      const newB64 = makeVoiceGesture(lengthPx, durationSec, deviceScale, targetAngleRadian);
+                      
+                      // 3. 生成された【新しいジェスチャ】から、再度角度を抽出して確認
+                      let generatedAngleRadian = extractAngleFromBplist(newB64);
+                      let degGenerated = "解析エラー";
+                      if(generatedAngleRadian !== null){
+                          degGenerated = (-generatedAngleRadian * 180 / Math.PI) % 360;
+                          if(degGenerated < 0) degGenerated += 360;
+                          degGenerated = degGenerated.toFixed(2) + "°";
+                      }
+                      
+                      results.push(`[${commandName}]\n 抽出: ${degOriginal.toFixed(2)}°\n 生成: ${degGenerated}\n`);
                   }
-                  
-                  results.push(`[語句: ${commandName}] 内部データ解析角度: ${angleDegText}`);
               }
            }
         }
@@ -904,7 +909,7 @@ if(voiceConvertBtn && voiceConvertFile){
         voiceModal.classList.remove('open');
         
         if(results.length > 0){
-            alert("【純粋なデータ解析テスト結果】\n\n" + results.join("\n"));
+            alert("【生成前後の角度 比較テスト】\n\n" + results.join("\n"));
         } else {
             alert("コマンドが見つかりませんでした。");
         }

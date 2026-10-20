@@ -692,45 +692,62 @@ function voiceDataToBase64(bytes){let bin='';for(let i=0;i<bytes.length;i+=0x800
 function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = pullAngle){
  const bytes=Uint8Array.from(atob(voiceGestureTemplateB64),c=>c.charCodeAt(0));
  const target=targetPullAngle-Math.PI;
- const baseX=voiceGesturePoints[0].x,baseY=voiceGesturePoints[0].y;
- const x1=Math.round(baseX*deviceScale)/deviceScale;
- const y1=Math.round(baseY*deviceScale)/deviceScale;
+ const baseX=voiceGesturePoints[0].x, baseY=voiceGesturePoints[0].y;
+ 
+ // 始点はAppleのテンプレート通りの正確な数値をそのまま使う
+ const x1 = baseX;
+ const y1 = baseY;
+ 
  let best=null;
- const targetR=lengthPx*deviceScale;
- const minR=Math.max(10,Math.floor(targetR*0.7));
- const maxR=Math.floor(targetR*1.3);
-  for(let R=minR;R<=maxR;R++){
-  // ★ Math.round を完全に廃止し、正確な浮動小数点のまま計算
-  const exactX = R * Math.cos(target);
-  const exactY = R * Math.sin(target);
-  
-  const testX = x1 + exactX / deviceScale;
-  const testY = y1 + exactY / deviceScale;
-  
-  let content=`{${testX.toFixed(5)}, ${testY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
-  
-  // 文字列化した後の座標から実際の角度を再計算し、誤差を極小化
-  const parsedX = parseFloat(testX.toFixed(5));
-  const parsedY = parseFloat(testY.toFixed(5));
-  const actualAngle = Math.atan2(parsedY - y1, parsedX - x1);
-  const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
-  
-  const lengthPenalty = Math.abs(R - targetR) / targetR;
-  // ★ 角度の完全一致を超最優先する
-  const score = diff * 10000000 + lengthPenalty * 0.1;
-  
-  if(content.length<=voiceGesturePoints[2].length&&(!best||score<best.score)){
-   best={x:testX,y:testY,content,score};
+ const targetR = lengthPx; // 基準の長さ（ポイント）
+ 
+ // 理想の終点を算出
+ const idealX = x1 + targetR * Math.cos(target);
+ const idealY = y1 + targetR * Math.sin(target);
+
+ // 理想の終点周辺を微小単位で総当たり探索し、「25文字以内に収まり、かつ角度誤差がゼロになる」数値を逆算
+ const searchRange = 1.0; 
+ const step = 0.005; 
+ 
+ for(let offsetX = -searchRange; offsetX <= searchRange; offsetX += step){
+  for(let offsetY = -searchRange; offsetY <= searchRange; offsetY += step){
+   const testX = idealX + offsetX;
+   const testY = idealY + offsetY;
+   
+   // 実際のファイルに書き込まれる文字列をシミュレート
+   let content=`{${testX.toFixed(5)}, ${testY.toFixed(5)}}`.replace(/(\.\d*?[1-9])0+}/,'$1}').replace(/\.0+}/,'}');
+   
+   // 25文字（voiceGesturePoints[2].length）を超えたらiOSで読み込めないので除外
+   if(content.length > voiceGesturePoints[2].length) continue; 
+   
+   // 文字列化された数値から再計算し、iOS側の解釈と全く同じ条件で角度誤差を測る
+   const match = content.match(/{([^,]+),\s*([^}]+)}/);
+   if(!match) continue;
+   const px = parseFloat(match[1]);
+   const py = parseFloat(match[2]);
+   
+   const actualAngle = Math.atan2(py - y1, px - x1);
+   const diff = Math.abs(Math.atan2(Math.sin(actualAngle - target), Math.cos(actualAngle - target)));
+   const actualR = Math.hypot(px - x1, py - y1);
+   const lengthPenalty = Math.abs(actualR - targetR) / targetR;
+   
+   // 角度の完全一致を最優先（1億倍）
+   const score = diff * 100000000 + lengthPenalty;
+   
+   if(!best || score < best.score){
+    best = {x: px, y: py, content, score};
+   }
   }
  }
+ 
  if(!best)throw new Error('指定角度に近い座標を生成できません');
+ 
  const coords=[{x:x1,y:y1},{x:x1,y:y1},{x:best.x,y:best.y}];
  voiceGesturePoints.forEach((p,i)=>{
-  const q=coords[i];
   let content=i===2?best.content:'';
   if(i!==2){
    for(let digits=6;digits>=0;digits--){
-    const candidate=`{${q.x.toFixed(digits)}, ${q.y.toFixed(digits)}}`;
+    const candidate=`{${coords[i].x.toFixed(digits)}, ${coords[i].y.toFixed(digits)}}`;
     if(candidate.length<=p.length){content=candidate;break;}
    }
   }
@@ -738,13 +755,14 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
   const padded=content.slice(0,-1)+' '.repeat(p.length-content.length)+'}';
   bytes.set(new TextEncoder().encode(padded),p.offset);
  });
+ 
  const t0=voiceGestureTimes[0].value,tLast=voiceGestureTimes[voiceGestureTimes.length-1].value;
  const factor=durationSec/Math.max(.001,tLast-t0);
  const view=new DataView(bytes.buffer);
  voiceGestureTimes.forEach(t=>view.setFloat64(t.offset,t0+(t.value-t0)*factor,false));
+ 
  return voiceDataToBase64(bytes);
 }
-
 document.getElementById('voiceGenerate').addEventListener('click',()=>{
  try{
   const deviceProfile=getVoiceDeviceProfile();

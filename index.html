@@ -725,33 +725,137 @@ function makeVoiceGesture(lengthPx, durationSec, deviceScale, targetPullAngle = 
  voiceGestureTimes.forEach(t=>view.setFloat64(t.offset,t0+(t.value-t0)*factor,false));
  return voiceDataToBase64(bytes);
 }
+// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理（完全解析版）
+function extractAngleFromBplist(b64) {
+    try {
+        const buf = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+        const view = new DataView(buf.buffer);
+        if (String.fromCharCode(...buf.subarray(0, 8)) !== 'bplist00') return null;
+        const trailer = buf.length - 32;
+        const offsetSize = buf[trailer + 6];
+        const refSize = buf[trailer + 7];
+        const numObjects = Number(view.getBigUint64(trailer + 8));
+        const offsetTableOffset = Number(view.getBigUint64(trailer + 24));
+        const getRef = (offset, size) => size === 1 ? buf[offset] : size === 2 ? view.getUint16(offset) : view.getUint32(offset);
+        const objects = [];
+        for (let i = 0; i < numObjects; i++) {
+            const off = offsetTableOffset + i * offsetSize;
+            const objOff = getRef(off, offsetSize);
+            const marker = buf[objOff];
+            const type = marker & 0xF0;
+            if (type === 0x50) {
+                let len = marker & 0x0F;
+                let dataOff = objOff + 1;
+                if (len === 15) {
+                    const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
+                    dataOff++;
+                    len = getRef(dataOff, intBytes);
+                    dataOff += intBytes;
+                }
+                objects.push(String.fromCharCode(...buf.subarray(dataOff, dataOff + len)));
+            } else if (type === 0xA0) {
+                let len = marker & 0x0F;
+                let dataOff = objOff + 1;
+                if (len === 15) {
+                    const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
+                    dataOff++;
+                    len = getRef(dataOff, intBytes);
+                    dataOff += intBytes;
+                }
+                const arr = [];
+                for (let j = 0; j < len; j++) arr.push(getRef(dataOff + j * refSize, refSize));
+                objects.push({ isArray: true, refs: arr });
+            } else if (type === 0xD0) {
+                let len = marker & 0x0F;
+                let dataOff = objOff + 1;
+                if (len === 15) {
+                    const intBytes = Math.pow(2, buf[dataOff] & 0x0F);
+                    dataOff++;
+                    len = getRef(dataOff, intBytes);
+                    dataOff += intBytes;
+                }
+                const dict = {};
+                for (let j = 0; j < len; j++) {
+                    const keyRef = getRef(dataOff + j * refSize, refSize);
+                    const valRef = getRef(dataOff + len * refSize + j * refSize, refSize);
+                    dict[keyRef] = valRef;
+                }
+                objects.push({ isDict: true, dict });
+            } else {
+                objects.push(null);
+            }
+        }
+        if (!objects[1] || !objects[1].isArray) return null;
+        const sysObjects = objects[1].refs.map(ref => objects[ref]);
+        let eventsArrayRef = null;
+        for (let i = 0; i < sysObjects.length; i++) {
+            const obj = sysObjects[i];
+            if (obj && obj.isDict) {
+                for (const keyRef in obj.dict) {
+                    if (sysObjects[keyRef] === 'events') {
+                        eventsArrayRef = obj.dict[keyRef];
+                        break;
+                    }
+                }
+            }
+            if (eventsArrayRef !== null) break;
+        }
+        if (eventsArrayRef !== null) {
+            const eventsArr = sysObjects[eventsArrayRef];
+            if (eventsArr && eventsArr.isArray) {
+                const points = [];
+                for (const eventRef of eventsArr.refs) {
+                    const eventDict = sysObjects[eventRef];
+                    if (eventDict && eventDict.isDict) {
+                        for (const keyRef in eventDict.dict) {
+                            if (sysObjects[keyRef] === 'NS.pointval') {
+                                const pointStr = sysObjects[eventDict.dict[keyRef]];
+                                if (typeof pointStr === 'string') {
+                                    const m = pointStr.match(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/);
+                                    if (m) points.push({x: parseFloat(m[1]), y: parseFloat(m[2])});
+                                }
+                            }
+                        }
+                    }
+                }
+                if (points.length >= 2) {
+                    const dx = points[points.length - 1].x - points[0].x;
+                    const dy = points[points.length - 1].y - points[0].y;
+                    return Math.atan2(dy, dx) + Math.PI;
+                }
+            }
+        }
+    } catch(e) {}
+    return null;
+}
 
-// 2. 既存バイナリから角度を取り出して新規テンプレートで一括打ち直しする処理（角度のみ抽出・マイナス座標対応版）
-function convertGestureDuration(b64, durationSec, lengthPx, deviceScale){
+function convertGestureDuration(b64, durationSec, lengthPx, deviceScale, angleFromName = null){
+  // 1. コマンド名から抽出した角度があればそれを最優先で適用
+  if (angleFromName !== null && !isNaN(angleFromName)) {
+    return makeVoiceGesture(lengthPx, durationSec, deviceScale, angleFromName);
+  }
+  
+  // 2. iOSの内部バイナリ構造を解読して時系列順の角度を算出
+  const bplistAngle = extractAngleFromBplist(b64);
+  if (bplistAngle !== null) {
+    return makeVoiceGesture(lengthPx, durationSec, deviceScale, bplistAngle);
+  }
+
+  // 3. それでもダメな場合の最終フォールバック
   try{
     const raw = atob(b64.trim());
-    // ▼ マイナス記号が含まれる座標も正確に抽出できるように修正
     const matches = [...raw.matchAll(/\{(-?[0-9.]+),\s*(-?[0-9.]+)\}/g)];
     if(!matches || matches.length < 2) return b64;
-    
-    // 実際のファイルデータから「始点」と「終点」を取得
     const startX = parseFloat(matches[0][1]);
     const startY = parseFloat(matches[0][2]);
     const endX = parseFloat(matches[matches.length - 1][1]);
     const endY = parseFloat(matches[matches.length - 1][2]);
-    
-    const dx = endX - startX;
-    const dy = endY - startY;
-    
-    // 移動量（dx, dy）から正確な角度を割り出し、新規生成時のパラメータに変換
-    const extractedPullAngle = Math.atan2(dy, dx) + Math.PI;
-
-    // 抽出した角度だけを渡し、長さや真っ直ぐさは新規生成時と同じ最適なロジックを適用する
-    return makeVoiceGesture(lengthPx, durationSec, deviceScale, extractedPullAngle);
+    return makeVoiceGesture(lengthPx, durationSec, deviceScale, Math.atan2(endY - startY, endX - startX) + Math.PI);
   }catch(e){
     return b64;
   }
 }
+
 // 3. ファイル選択イベント処理
 const voiceConvertBtn = document.getElementById('voiceConvertBtn');
 const voiceConvertFile = document.getElementById('voiceConvertFile');
@@ -792,8 +896,27 @@ if(voiceConvertBtn && voiceConvertFile){
     reader.onload = evt => {
       try{
         const xmlText = evt.target.result;
-        const convertedXml = xmlText.replace(/<key>CustomGesture<\/key>\s*<data>([\s\S]*?)<\/data>/g, (match, b64) => {
-          return `<key>CustomGesture</key><data>${convertGestureDuration(b64, durationSec, lengthPx, deviceScale)}</data>`;
+        let currentCommandName = '';
+        
+        // ファイル内の読み上げコマンド名とジェスチャデータの両方を同時に解析して変換
+        const convertedXml = xmlText.replace(/<key>ja_JP<\/key>\s*<array>\s*<string>(.*?)<\/string>|(<key>CustomGesture<\/key>\s*<data>([\s\S]*?)<\/data>)/g, (match, name, gestureGroup, b64) => {
+            if (name !== undefined) {
+                currentCommandName = name; // コマンド名を記憶
+                return match;
+            }
+            if (b64 !== undefined) {
+                let angleFromName = null;
+                // 記憶したコマンド名から角度（例: 49.31）を抽出
+                const angleMatch = currentCommandName.match(/([0-9]{1,3}\.[0-9]{1,2})/);
+                if (angleMatch) {
+                    angleFromName = -parseFloat(angleMatch[1]) * Math.PI / 180;
+                }
+                
+                const newB64 = convertGestureDuration(b64, durationSec, lengthPx, deviceScale, angleFromName);
+                currentCommandName = ''; // 次のコマンド用にリセット
+                return `<key>CustomGesture</key><data>${newB64}</data>`;
+            }
+            return match;
         });
 
         const blob = new Blob([convertedXml], {type: 'application/octet-stream'});

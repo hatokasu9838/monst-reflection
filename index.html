@@ -269,63 +269,50 @@ window.addEventListener('resize',()=>{if(!stage.hidden){fitStage();if(gaugeOn)po
 // Wall coordinates are independent X/Y values based on the iPhone 14 reference.
 // They are adjusted individually; changing one side does not preserve a ratio.
 function bounds(){
-  // 1. マスターとなるiPhone 14の想定解像度とスケール基準
+  // 1. マスター環境（iPhone 14想定）の解像度
   const baseW = 1170;
   const baseH = 2532;
-  const oldRefH = 1536; // 元のY座標のスケール基準値
-  
-  // 2. ユーザーが設定した「完璧な数値」から絶対座標を逆算
-  const absL = leftX;
-  const absR = rightX;
-  const absT = (topY / oldRefH) * baseH;
-  const absB = (bottomY / oldRefH) * baseH;
-  
-  // 3. 真の盤面サイズとアスペクト比（全端末で絶対に崩さない比率）
-  const boardW = absR - absL;
-  const boardH = absB - absT;
-  const aspect = boardH / boardW; // 約1.145
-  
-  const widthPct = boardW / baseW; // 画面幅に対する盤面幅の割合
-  const topPct = absT / baseH;     // 画面高さに対する上端(Top)の割合
-  const centerXPct = (absL + absR) / 2 / baseW; // Xの中心位置
-  
-  // 4. 読み込んだ画像に合わせて盤面サイズを仮計算 (横幅基準)
-  let currentBoardW = imgW * widthPct;
-  let currentBoardH = currentBoardW * aspect;
-  
-  // 5. iPadなどの高さ制限判定
-  // SE(16:9 = 1.777)を基準とし、これより横長な画面では高さを縮小する
-  const thresholdAspect = 1334 / 750;
-  const maxH_Pct = (widthPct * aspect) / thresholdAspect;
-  
-  let currentTop;
-  let isHeightLimited = false;
-  
-  if (currentBoardH > imgH * maxH_Pct) {
-    // iPadなど：高さがUIに被るため、高さを限界値で止めて幅を縮小
-    currentBoardH = imgH * maxH_Pct;
-    currentBoardW = currentBoardH / aspect;
-    isHeightLimited = true;
-  }
-  
-  // 6. 最終的なY座標の配置位置
-  if (isHeightLimited) {
-    // iPad：縮小された盤面は、上下UIの間の「画面中央」寄りに配置される
-    currentTop = (imgH - currentBoardH) / 2;
+  const oldRefH = 1536; // 元コードのY座標スケール基準値
+
+  // 2. 完璧な数値（上299など）から、ベース環境での絶対座標と「中心位置」を算出
+  const uL = leftX;
+  const uR = rightX;
+  const uT = (topY / oldRefH) * baseH;
+  const uB = (bottomY / oldRefH) * baseH;
+
+  const baseBoxW = uR - uL;
+  const baseBoxH = uB - uT;
+
+  // 画面全体に対する、盤面の中心X・中心Yの割合（iPhone 14基準）
+  const cxPct = (uL + uR) / 2 / baseW;
+  const cyPct = (uT + uB) / 2 / baseH;
+
+  // 3. 読み込んだ画像のアスペクト比判定（16:9を基準とする）
+  const thresholdAspect = 16 / 9; // 約1.777
+  const imgAspect = imgH / imgW;
+
+  let scale;
+  if (imgAspect >= thresholdAspect) {
+    // 縦長スマホ (iPhone 14, SEなど): 画面の「横幅」に合わせてスケール
+    scale = imgW / baseW;
   } else {
-    // iPhone 14, SE：上部UIからの絶対的な割合位置を維持する
-    currentTop = imgH * topPct;
+    // 横広タブレット (iPadなど): 16:9の限界「高さ」に合わせてスケール（左右に余白ができる）
+    const virtualW = imgH / thresholdAspect;
+    scale = virtualW / baseW;
   }
+
+  // 4. 最終的な盤面のサイズと、中心位置からの座標計算
+  const currentW = baseBoxW * scale;
+  const currentH = baseBoxH * scale;
   
-  // X座標の中心を計算して配置
-  const currentCenterX = imgW * centerXPct;
-  const currentLeft = currentCenterX - currentBoardW / 2;
-  
+  const currentCX = imgW * cxPct;
+  const currentCY = imgH * cyPct;
+
   return {
-    l: Math.max(0, currentLeft),
-    r: Math.min(imgW, currentLeft + currentBoardW),
-    t: Math.max(0, currentTop),
-    b: Math.min(imgH, currentTop + currentBoardH)
+    l: Math.max(0, currentCX - currentW / 2),
+    r: Math.min(imgW, currentCX + currentW / 2),
+    t: Math.max(0, currentCY - currentH / 2),
+    b: Math.min(imgH, currentCY + currentH / 2)
   };
 }
 function draw(){

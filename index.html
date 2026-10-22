@@ -114,7 +114,7 @@ input{ -webkit-touch-callout:none; }
       100% { transform: translateX(-100%); }
     }
   </style>
-  <p id="voiceNoticeText" style="color: #ff4d4d; font-weight: bold; font-size: 12px; margin: 0; line-height: 1.45;">※注意※iPhoneSEなどの画面の小さい端末の場合スケールフィルターが@2xのため生成した角度から0.01°~0.02°程ズレが生じます。</p>
+  <p id="voiceNoticeText" style="color: #ff4d4d; font-weight: bold; font-size: 12px; margin: 0; line-height: 1.45;">※注意※角度によって生成した角度から0.0？°程ズレが生じる不具合を確認。</p>
 </div>
   <div class="voiceField">
    <label>なぞるのにかける時間</label>
@@ -420,7 +420,7 @@ cv.addEventListener('pointerdown',e=>{
 });
 cv.addEventListener('pointermove',e=>{
  if(!active)return;
- // Safari/iPhoneでも可能な限り細かいpointerイベントをすべて処理し、角度を丸めません。
+ // Safari/iPhoneでも可能な限り細かいpointerイベントをすべて処理。
  const events=e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
  for(const ev of events){
    const p=pos(ev);
@@ -429,7 +429,7 @@ cv.addEventListener('pointermove',e=>{
      cursor.x=Math.max(0,Math.min(imgW,cursor.x+(p.x-lastX)));
      cursor.y=Math.max(0,Math.min(imgH,cursor.y+(p.y-lastY)));
    }else{
-     // 指の位置から連続値の角度を直接計算。1°刻みにはしません。
+     // 指の位置から連続値の角度を直接計算
      const vx=p.x-touchStartX, vy=p.y-touchStartY;
      if(Math.hypot(vx,vy)>0.01){
        pullAngle=Math.atan2(-vy,-vx);
@@ -445,7 +445,7 @@ function updateAngleUI(){
  if(deg < 0) deg += 360;
  document.getElementById('angleDisplay').querySelector('.angleValue').textContent = deg.toFixed(2) + '°';
 }
-// 角度表示をダブルタップすると数値キーボードで直接編集できます。
+// 角度表示をダブルタップすると数値キーボードで直接編集できる。
 (function enableAngleDirectInput(){
  const display=document.getElementById('angleDisplay');
  let lastTap=0;
@@ -539,7 +539,7 @@ function saveGuideImage(){
     alert('先に画像を選択してください。');
     return;
   }
-  // 選択した元画像に、現在canvasへ描かれているガイドをそのまま重ねて保存します。
+  // 選択した元画像に、現在canvasへ描かれているガイドをそのまま重ねて保存
   const out=document.createElement('canvas');
   out.width=imgW; out.height=imgH;
   const octx=out.getContext('2d');

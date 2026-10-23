@@ -52,7 +52,7 @@ input{ -webkit-touch-callout:none; }
 #zoomBtn.active{background:#52677e}
 #gaugeBtn.active{background:#52677e}
 
-/* 画面中央に重ねるゲージ */
+/* 画面中央に */
 #gaugeOverlay{position:absolute;left:50%;top:50%;width:114px;height:32px;transform:translate(-50%,-50%) rotate(0deg);transform-origin:left center;pointer-events:none;z-index:15;display:none}
 #gaugeOverlay.on{display:block}
 #gaugeLine{position:absolute;left:0;top:50%;width:114px;height:20px;transform:translateY(-50%) scaleX(0);transform-origin:left center;border-radius:999px;background:rgba(255,255,255,.34);box-shadow:0 0 7px rgba(255,255,255,.12);}
@@ -173,7 +173,7 @@ file.onchange=e=>{
    imgW=photo.naturalWidth; imgH=photo.naturalHeight;
    stage.hidden=false; empty.hidden=true;
    fitStage();
-   // 画像を変更しても、カーソルの現在位置と角度を維持します。
+   // 画像を変更してもカーソルの現在位置と角度を維持
    const b=bounds();
    if(typeof window._cursorRelX==='number' && typeof window._cursorRelY==='number'){
      cursor.x=Math.max(0,Math.min(imgW,window._cursorRelX*imgW));
@@ -218,7 +218,7 @@ function bounds(){
   const baseBoxW = uR - uL;
   const baseBoxH = uB - uT;
 
-  // ★ここが位置ズレ解消の鍵：「画面のど真ん中」からどれだけズレているかを計算
+  // 位置ズレ解消の鍵：「画面のど真ん中」からどれだけズレているかを計算
   const baseCenterX = (uL + uR) / 2;
   const baseCenterY = (uT + uB) / 2;
   const offsetX = (baseW / 2) - baseCenterX; // 中心からのXズレ
